@@ -1,0 +1,8 @@
+--- 
+id: {{date:YYYYMMDDHHmm}}
+type: concept 
+status: draft 
+created: {{date:YYYY-MM-DD}} 
+tags:
+	- tag
+---

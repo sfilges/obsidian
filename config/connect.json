@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "obsidian-brain": {
+            "command": "/path/to/your/python/bin/python3",
+            "args": [
+                "/path/to/your/project/server.py"
+            ]
+        }
+    }
+}
