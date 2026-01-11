@@ -3,11 +3,7 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableStructureOptions
 from utils import generate_frontmatter
-from config import OBSIDIAN_VAULT_PATH, TARGET_FOLDER
 
-# --- CHECKS ---
-if not OBSIDIAN_VAULT_PATH.exists():
-    raise FileNotFoundError(f"Could not find Obsidian Vault at: {OBSIDIAN_VAULT_PATH}") 
 
 # --- SETUP PIPELINE ---
 def get_converter():
@@ -30,7 +26,7 @@ def get_converter():
     )
 
 
-def process_paper(pdf_path):
+def process_paper(pdf_path: Path, vault_path: Path, target_folder: Path):
     print(f"📄 Processing: {pdf_path}...")
     
     converter = get_converter()
@@ -45,13 +41,19 @@ def process_paper(pdf_path):
         markdown_content = doc.export_to_markdown()
         
         # 3. Prepare Frontmatter
-        frontmatter, title = generate_frontmatter(doc, pdf_path)
+        frontmatter, title = generate_frontmatter(
+            doc,
+            pdf_path,
+            type ="paper",
+            status = "active",
+            tags = ["paper", "research-article"]
+        )
         
         # 4. Construct final file content
         final_content = frontmatter + markdown_content
         
         # 5. Save to Obsidian
-        save_path = OBSIDIAN_VAULT_PATH / TARGET_FOLDER
+        save_path = Path(vault_path) / target_folder
         save_path.mkdir(parents=True, exist_ok=True)
         
         # Clean filename (remove illegal characters)
@@ -66,12 +68,19 @@ def process_paper(pdf_path):
     except Exception as e:
         print(f"❌ Error processing {pdf_path}: {e}")
 
+def batch_convert_pdfs(pdf_paths: Path, vault_path: Path, target_folder: Path):
+    pdf_paths = Path(pdf_paths).glob("**/*.pdf")
+    for pdf_path in pdf_paths:
+        process_paper(pdf_path, vault_path, target_folder)
+
 if __name__ == "__main__":
     import sys
     
     # Check if a file path was provided
     if len(sys.argv) < 2:
-        print("Usage: python paper2obsidian.py <path_to_pdf>")
+        print("Usage: python convert_to_md.py <path_to_pdf> <vault_path> <target_folder>")
     else:
         input_pdf = sys.argv[1]
-        process_paper(input_pdf)
+        vault_path = sys.argv[2]
+        target_folder = sys.argv[3]
+        batch_convert_pdfs(input_pdf, vault_path, target_folder)

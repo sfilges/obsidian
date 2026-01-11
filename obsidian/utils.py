@@ -8,7 +8,7 @@ from config import TEMPLATE_PATH
 
 # --- HELPER FUNCTIONS ---
 
-def generate_frontmatter(doc, source_path: str, type: str = "general", tags: list = []):
+def generate_frontmatter(doc, source_path: str, type: str = "general", status: str = "draft", tags: list = []):
     """
     Creates Obsidian-friendly YAML frontmatter.
     """
@@ -23,7 +23,7 @@ def generate_frontmatter(doc, source_path: str, type: str = "general", tags: lis
     frontmatter += f"id: {uuid.uuid4()}\n"
     frontmatter += f"title: \"{title}\"\n"
     frontmatter += f"type: {type}\n"
-    frontmatter += "status: unread\n"
+    frontmatter += f"status: {status}\n"
     frontmatter += f"added: {date_added}\n"
     frontmatter += f"tags: {tags}\n"
     frontmatter += f"source: {source_path}\n"

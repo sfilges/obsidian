@@ -1,8 +1,11 @@
 --- 
 id: {{date:YYYYMMDDHHmm}}
+title: ""
+authors: []
+summary: ""
 type: concept 
 status: draft 
 created: {{date:YYYY-MM-DD}} 
-tags:
-	- tag
+tags: []
+source_file: ""
 ---

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 
-This repository contains scripts to ingest an Obsidian/Markdown vault into a local LanceDB database and exposes it via MCP for Claude access.
+This repository contains scripts to ingest an Obsidian/Markdown vault into a local LanceDB database and exposes it via MCP for Chatbot (e.g. Claude) access.
 
 ## File ingestion
 
@@ -22,7 +22,7 @@ Add your server definition. You must use the absolute path to your Python execut
 ```json
 {
   "mcpServers": {
-    "obsidian-brain": {
+    "obsidian-vault": {
       "command": "/path/to/your/python/bin/python3",
       "args": [
         "/path/to/your/project/server.py"
