@@ -3,16 +3,11 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableStructureOptions
 from utils import generate_frontmatter
+from config import OBSIDIAN_VAULT_PATH, TARGET_FOLDER
 
-# --- CONFIGURATION ---
-# Path to your Obsidian Vault (e.g., "/Users/name/Obsidian/Research")
-OBSIDIAN_VAULT_PATH = Path("~/Nextcloud/Notes/Obsidian").expanduser()
-
+# --- CHECKS ---
 if not OBSIDIAN_VAULT_PATH.exists():
-    raise FileNotFoundError(f"Could not find Obsidian Vault at: {OBSIDIAN_VAULT_PATH}")
-
-# Folder inside Obsidian to store the papers (optional)
-TARGET_FOLDER = "Research/Bioinformatics" 
+    raise FileNotFoundError(f"Could not find Obsidian Vault at: {OBSIDIAN_VAULT_PATH}") 
 
 # --- SETUP PIPELINE ---
 def get_converter():

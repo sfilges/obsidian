@@ -1,14 +1,14 @@
-# --- HELPER FUNCTIONS ---
-
+import uuid
 import os
 import time
 from pathlib import Path
+import yaml
+from datetime import datetime
+from config import TEMPLATE_PATH
 
-# This looks for "../templates/header.yaml" relative to this script's location
-SCRIPT_DIR = Path(__file__).parent
-TEMPLATE_PATH = (SCRIPT_DIR / "../templates/header.yaml").resolve()
+# --- HELPER FUNCTIONS ---
 
-def generate_frontmatter(doc, source_path: str, type: str = "general"):
+def generate_frontmatter(doc, source_path: str, type: str = "general", tags: list = []):
     """
     Creates Obsidian-friendly YAML frontmatter.
     """
@@ -20,11 +20,12 @@ def generate_frontmatter(doc, source_path: str, type: str = "general"):
     
     # TODO: This should load the frontmatter from ../templates/header.yaml
     frontmatter = "---\n"
+    frontmatter += f"id: {uuid.uuid4()}\n"
     frontmatter += f"title: \"{title}\"\n"
     frontmatter += f"type: {type}\n"
     frontmatter += "status: unread\n"
     frontmatter += f"added: {date_added}\n"
-    frontmatter += "tags: [paper, research]\n"
+    frontmatter += f"tags: {tags}\n"
     frontmatter += f"source: {source_path}\n"
     frontmatter += "---\n\n"
     

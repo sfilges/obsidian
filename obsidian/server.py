@@ -3,20 +3,17 @@ from mcp.server.fastmcp import FastMCP
 from sentence_transformers import SentenceTransformer
 from typing import List
 
-# --- CONFIGURATION ---
-DB_PATH = "./lancedb_data"
-VAULT_PATH = "/path/to/your/obsidian/vault"
-EMBEDDING_MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
+from config import LANCE_DB_PATH, VAULT_PATH, EMBEDDING_MODEL_NAME
 
 # --- INITIALIZATION ---
 # We initialize the server name
-mcp = FastMCP("Obsidian Brain")
+mcp = FastMCP("Obsidian-Vault")
 
 print("Loading Embedding Model... (this may take a moment)")
 model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
 
-print(f"Connecting to LanceDB at {DB_PATH}...")
-db = lancedb.connect(DB_PATH)
+print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
+db = lancedb.connect(LANCE_DB_PATH)
 table = db.open_table("notes")
 
 # --- TOOL 1: SEMANTIC SEARCH ---

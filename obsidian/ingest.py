@@ -8,21 +8,16 @@ from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 
 from utils import parse_frontmatter, get_file_metadata
+from config import (
+    VAULT_PATH, 
+    LANCE_DB_PATH, 
+    EMBEDDING_MODEL_NAME, 
+    CHUNK_SIZE, 
+    CHUNK_OVERLAP
+)
 
-# --- CONFIGURATION ---
-VAULT_PATH = os.environ.get("VAULT_PATH")
-
-# Local DB
-LANCE_DB_PATH = "./lancedb_data"
-
-# Optional cloud DB (ignore for now); set environment variables to use with .env file
-#LANCE_DB_PATH = os.environ.get("LANCE_DB_PATH")
-#LANCE_API_KEY = os.environ.get("LANCE_API_KEY")
-#LANCE_DB_REGION = os.environ.get("LANCE_DB_REGION")
-
+# --- NOTES ---
 # Nomic requires the v1.5 specific model ID
-EMBEDDING_MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
-
 # When we build the MCP Server (retrieval tool), we must remember 
 # to prefix the user's question differently.
 # Ingestion: search_document: The API uses OAuth2...
@@ -33,10 +28,6 @@ EMBEDDING_MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
 # search_query is used for the question and search_document is used for the response. 
 # classification is used for STS-related tasks like rephrasals. clustering is used for tasks where the objective is to group
 # semantically similar texts close together.
-
-# We can afford much larger chunks now (approx 500-800 tokens)
-CHUNK_SIZE = 2000 
-CHUNK_OVERLAP = 200
 
 # --- DATABASE SCHEMA ---
 class NoteChunk(BaseModel):
@@ -57,8 +48,8 @@ print(f"Loading {EMBEDDING_MODEL_NAME}...")
 # trust_remote_code=True is often needed for Nomic's architecture
 model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
 
-print(f"Connecting to LanceDB at {DB_PATH}...")
-db = lancedb.connect(DB_PATH)
+print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
+db = lancedb.connect(LANCE_DB_PATH)
 
 
 def chunk_markdown(content: str):
