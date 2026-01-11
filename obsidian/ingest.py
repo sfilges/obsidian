@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 
+from utils import parse_frontmatter, get_file_metadata
+
 # --- CONFIGURATION ---
 VAULT_PATH = os.environ.get("VAULT_PATH")
 
@@ -58,33 +60,6 @@ model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
 print(f"Connecting to LanceDB at {DB_PATH}...")
 db = lancedb.connect(DB_PATH)
 
-# --- HELPER FUNCTIONS ---
-
-def parse_frontmatter(file_content: str):
-    """(Same as previous script)"""
-    if file_content.startswith("---"):
-        try:
-            parts = file_content.split("---", 2)
-            if len(parts) >= 3:
-                frontmatter = yaml.safe_load(parts[1])
-                content = parts[2].strip()
-                return frontmatter, content
-        except yaml.YAMLError:
-            pass
-    return {}, file_content
-
-def get_file_metadata(filepath: str, frontmatter: dict):
-    """(Same as previous script)"""
-    stats = os.stat(filepath)
-    filename = os.path.basename(filepath)
-    return {
-        "title": frontmatter.get("title", filename.replace(".md", "")),
-        "note_type": frontmatter.get("type", "general"),
-        "status": frontmatter.get("status", "active"),
-        "created": str(frontmatter.get("created", datetime.fromtimestamp(stats.st_ctime).date())),
-        "tags": ",".join(frontmatter.get("tags", [])),
-        "last_modified": stats.st_mtime
-    }
 
 def chunk_markdown(content: str):
     """
