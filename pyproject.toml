@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "obsidian-vault-rag"
+version = "0.1.0"
+description = "Obsidian RAG CLI - Ingest and Chat with your notes"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "lancedb==0.26.1",
+    "pyyaml==6.0.3",
+    "sentence-transformers==5.2.0",
+    "langchain-text-splitters==1.1.0",
+    "langchain-docling==2.0.0",
+    "tqdm==4.67.1",
+    "pydantic==2.12.5",
+    "mcp==1.25.0",
+    "docling==2.67.0",
+    "typer>=0.12.5,<0.20.0",
+    "rich==13.7.0",
+    "einops",
+]
+
+[project.scripts]
+obsidian = "obsidian.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]

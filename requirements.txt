@@ -7,3 +7,6 @@ tqdm==4.67.1
 pydantic==2.12.5
 mcp==1.25.0
 docling==2.67.0
+typer==0.9.0
+rich==13.7.0
+einops

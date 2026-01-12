@@ -7,14 +7,24 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 
-from utils import parse_frontmatter, get_file_metadata
-from config import (
-    VAULT_PATH, 
-    LANCE_DB_PATH, 
-    EMBEDDING_MODEL_NAME, 
-    CHUNK_SIZE, 
-    CHUNK_OVERLAP
-)
+try:
+    from obsidian.utils import parse_frontmatter, get_file_metadata
+    from obsidian.config import (
+        VAULT_PATH, 
+        LANCE_DB_PATH, 
+        EMBEDDING_MODEL_NAME, 
+        CHUNK_SIZE, 
+        CHUNK_OVERLAP
+    )
+except ImportError:
+    from utils import parse_frontmatter, get_file_metadata
+    from config import (
+        VAULT_PATH, 
+        LANCE_DB_PATH, 
+        EMBEDDING_MODEL_NAME, 
+        CHUNK_SIZE, 
+        CHUNK_OVERLAP
+    )
 
 # --- NOTES ---
 # Nomic requires the v1.5 specific model ID
@@ -44,13 +54,22 @@ class NoteChunk(BaseModel):
     last_modified: float
 
 # --- INITIALIZATION ---
-print(f"Loading {EMBEDDING_MODEL_NAME}...")
-# trust_remote_code=True is often needed for Nomic's architecture
-model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
+model = None
+db = None
 
-print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
-db = lancedb.connect(LANCE_DB_PATH)
+def get_model():
+    global model
+    if model is None:
+        print(f"Loading {EMBEDDING_MODEL_NAME}...")
+        model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
+    return model
 
+def get_db():
+    global db
+    if db is None:
+        print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
+        db = lancedb.connect(LANCE_DB_PATH)
+    return db
 
 def chunk_markdown(content: str):
     """
@@ -124,7 +143,7 @@ def process_file(filepath: str, table):
         texts_to_embed.append(f"search_document: {full_text}")
 
     # Generate Embeddings
-    embeddings = model.encode(texts_to_embed)
+    embeddings = get_model().encode(texts_to_embed)
 
     for i, chunk in enumerate(chunks):
         record = NoteChunk(
@@ -149,7 +168,8 @@ def process_file(filepath: str, table):
 # --- MAIN EXECUTION ---
 def main():
     # Nomic v1.5 output dimension is 768
-    table = db.create_table("notes", schema=NoteChunk, exist_ok=True)
+    database = get_db()
+    table = database.create_table("notes", schema=NoteChunk, exist_ok=True)
     
     print(f"Scanning {VAULT_PATH}...")
     

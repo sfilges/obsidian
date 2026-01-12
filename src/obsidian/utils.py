@@ -4,7 +4,10 @@ import time
 from pathlib import Path
 import yaml
 from datetime import datetime
-from config import TEMPLATE_PATH
+try:
+    from obsidian.config import TEMPLATE_PATH
+except ImportError:
+    from config import TEMPLATE_PATH
 
 # --- HELPER FUNCTIONS ---
 
@@ -18,7 +21,6 @@ def generate_frontmatter(doc, source_path: str, type: str = "general", status: s
     # Current date for "Added" field
     date_added = time.strftime("%Y-%m-%d")
     
-    # TODO: This should load the frontmatter from ../templates/header.yaml
     frontmatter = "---\n"
     frontmatter += f"id: {uuid.uuid4()}\n"
     frontmatter += f"title: \"{title}\"\n"

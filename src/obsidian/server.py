@@ -3,18 +3,33 @@ from mcp.server.fastmcp import FastMCP
 from sentence_transformers import SentenceTransformer
 from typing import List
 
-from config import LANCE_DB_PATH, VAULT_PATH, EMBEDDING_MODEL_NAME
+try:
+    from obsidian.config import LANCE_DB_PATH, VAULT_PATH, EMBEDDING_MODEL_NAME
+except ImportError:
+    from config import LANCE_DB_PATH, VAULT_PATH, EMBEDDING_MODEL_NAME
 
 # --- INITIALIZATION ---
 # We initialize the server name
 mcp = FastMCP("Obsidian-Vault")
 
-print("Loading Embedding Model... (this may take a moment)")
-model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
+model = None
+db = None
+table = None
 
-print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
-db = lancedb.connect(LANCE_DB_PATH)
-table = db.open_table("notes")
+def get_model():
+    global model
+    if model is None:
+        print("Loading Embedding Model... (this may take a moment)")
+        model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
+    return model
+
+def get_table():
+    global db, table
+    if db is None:
+        print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
+        db = lancedb.connect(LANCE_DB_PATH)
+        table = db.open_table("notes")
+    return table
 
 # --- TOOL 1: SEMANTIC SEARCH ---
 @mcp.tool()
@@ -28,11 +43,11 @@ def search_notes(query: str, limit: int = 5) -> str:
     prefixed_query = f"search_query: {query}"
     
     # 2. Generate Embedding
-    query_vector = model.encode(prefixed_query).tolist()
+    query_vector = get_model().encode(prefixed_query).tolist()
     
     # 3. Search LanceDB
     # We select the fields we want to return to Claude
-    results = table.search(query_vector) \
+    results = get_table().search(query_vector) \
         .limit(limit) \
         .select(["title", "content", "filename", "created_date", "note_type"]) \
         .to_list()
@@ -70,7 +85,7 @@ def read_full_note(filename: str) -> str:
     # Faster: Query DB to get the path
     try:
         # Search for exact filename match in DB to get path
-        matches = table.search().where(f"filename = '{clean_filename}'").limit(1).to_list()
+        matches = get_table().search().where(f"filename = '{clean_filename}'").limit(1).to_list()
         if not matches:
              return f"Error: File '{clean_filename}' not found in the index."
              

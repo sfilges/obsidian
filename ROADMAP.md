@@ -5,6 +5,8 @@
 - [ ] Enable local LLM or (through API) to extract title, authors, summary, and tags from the document content
 - [ ] Improve the schema for the frontmatter to include more metadata and ensure extensibility
 - [ ] Make CLI scripts more user-friendly and configurable
+- [ ] Allow batch import from Zotero
+- [ ] Enable the user to set the vault path using a function
 
 ## Custom Chatbot with MCP integration
 
