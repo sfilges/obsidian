@@ -16,6 +16,7 @@ from obsidian.config import LANCE_DB_PATH, EMBEDDING_MODEL_NAME
 
 
 # --- DATABASE SCHEMA ---
+# TODO: consider using from lancedb.pydantic import LanceModel
 class NoteChunk(BaseModel):
     """Schema for indexed note chunks in LanceDB."""
     id: str
