@@ -20,9 +20,13 @@ or with uv:
 uv pip install .
 ```
 
+## Initial configuration
+
+Run `obsidian config` to set up your initial configuration by following the interactive wizard.
+
 ## File ingestion
 
-To ingest your vault, run `python ingest.py`.
+To ingest your vault into a LanceDB database, run `obsidian lance`.
 
 ## Connect to Claude Desktop
 

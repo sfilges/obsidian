@@ -28,3 +28,8 @@ obsidian = "obsidian.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+]
