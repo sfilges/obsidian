@@ -6,6 +6,20 @@
 
 Obsidian vault allows you to import an Obsidian/Markdown vault into a local LanceDB database and exposes it via MCP for Chatbot (e.g. Claude) access.
 
+## Installation
+
+Clone the repository and install dependencies:
+
+```bash
+pip install -e .
+```
+
+or with uv:
+
+```bash
+uv pip install .
+```
+
 ## File ingestion
 
 To ingest your vault, run `python ingest.py`.
