@@ -1,31 +1,31 @@
+"""
+CLI module for obsidian package.
 
-import typer
+Provides the command-line interface for the Obsidian RAG tool.
+"""
+
 import yaml
-import os
 from pathlib import Path
 from rich.console import Console
 from rich.prompt import Prompt
+import typer
 
-# Import the functionality from existing scripts
-# We need to make sure these imports work. 
-# Since cli.py is in obsidian/, imports like 'from obsidian.config import ...' might fail if run directly.
-# Proper usage: python -m obsidian.cli
-try:
-    from obsidian.config import VAULT_PATH, CONFIG_FILE, LANCE_DB_PATH, CHUNK_SIZE, CHUNK_OVERLAP, EMBEDDING_MODEL_NAME
-    # We delay importing ingest/server to avoid heavy load on simple config commands if possible, 
-    # but for simplicity we can import them.
-    from obsidian import ingest
-    from obsidian import server
-except ImportError:
-    # Fallback for direct execution if needed (mostly for testing dev setup)
-    import sys
-    sys.path.append(str(Path(__file__).parent.parent))
-    from obsidian.config import VAULT_PATH, CONFIG_FILE
-    from obsidian import ingest
-    from obsidian import server
+from obsidian.config import (
+    VAULT_PATH, 
+    CONFIG_FILE, 
+    LANCE_DB_PATH, 
+    CHUNK_SIZE, 
+    CHUNK_OVERLAP, 
+    EMBEDDING_MODEL_NAME
+)
+from obsidian import ingest
+from obsidian import convert_to_md as convert
+from obsidian import server
+
 
 app = typer.Typer(help="Obsidian RAG CLI - Ingest and Chat with your notes.")
 console = Console()
+
 
 @app.command()
 def config():
@@ -53,7 +53,7 @@ def config():
         "vault_path": str(new_vault_path),
         "lancedb_path": str(Path(new_db).expanduser().resolve()),
         "embedding_model": new_model,
-        "chunk_size": CHUNK_SIZE, # Persist existing if not changed
+        "chunk_size": CHUNK_SIZE,
         "chunk_overlap": CHUNK_OVERLAP
     }
     
@@ -64,16 +64,25 @@ def config():
     console.print(f"Vault: {config_data['vault_path']}")
     console.print(f"DB: {config_data['lancedb_path']}")
 
+
 @app.command()
-def ingest_vault():
+def lance():
     """
     Ingest the Obsidian vault into LanceDB.
     """
     console.print(f"[bold green]Starting Ingestion for {VAULT_PATH}...[/bold green]")
-    # We call the main function from ingest.py
-    # We might need to reload config if it was just changed in the same session, 
-    # but since this is a CLI, each command is a fresh process usually.
     ingest.main()
+
+
+# TODO: Implement generic file conversion/import
+# @app.command()
+# def convert():
+#     """
+#     Convert file(s) to markdown and save to vault.
+#     """
+#     console.print(f"[bold green]Converting file(s) to markdown and saving to vault...[/bold green]")
+#     convert.batch_convert_pdfs(...)
+
 
 @app.command()
 def serve(
@@ -83,8 +92,4 @@ def serve(
     Start the MCP Server.
     """
     console.print(f"[bold green]Starting MCP Server...[/bold green]")
-    # server.mcp.run() handles stdio by default.
     server.mcp.run()
-
-if __name__ == "__main__":
-    app()

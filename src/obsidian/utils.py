@@ -1,15 +1,18 @@
+"""
+Utility functions for obsidian package.
+
+Provides helper functions for frontmatter generation and metadata extraction.
+"""
+
 import uuid
 import os
 import time
 from pathlib import Path
 import yaml
 from datetime import datetime
-try:
-    from obsidian.config import TEMPLATE_PATH
-except ImportError:
-    from config import TEMPLATE_PATH
 
-# --- HELPER FUNCTIONS ---
+from obsidian.config import TEMPLATE_PATH
+
 
 def generate_frontmatter(doc, source_path: str, type: str = "general", status: str = "draft", tags: list = []):
     """
@@ -72,7 +75,7 @@ def get_frontmatter(doc, source_path):
 
 
 def parse_frontmatter(file_content: str):
-    """(Same as previous script)"""
+    """Parse YAML frontmatter from markdown file content."""
     if file_content.startswith("---"):
         try:
             parts = file_content.split("---", 2)
@@ -86,7 +89,7 @@ def parse_frontmatter(file_content: str):
 
 
 def get_file_metadata(filepath: str, frontmatter: dict):
-    """(Same as previous script)"""
+    """Extract metadata from file stats and frontmatter."""
     stats = os.stat(filepath)
     filename = os.path.basename(filepath)
     return {

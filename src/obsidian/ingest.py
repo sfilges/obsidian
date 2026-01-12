@@ -1,30 +1,16 @@
+"""
+Ingestion module for obsidian package.
+
+Provides functions to process and index Obsidian vault notes into LanceDB.
+"""
+
 import os
-import yaml
-import lancedb
-from typing import List
-from datetime import datetime
-from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 
-try:
-    from obsidian.utils import parse_frontmatter, get_file_metadata
-    from obsidian.config import (
-        VAULT_PATH, 
-        LANCE_DB_PATH, 
-        EMBEDDING_MODEL_NAME, 
-        CHUNK_SIZE, 
-        CHUNK_OVERLAP
-    )
-except ImportError:
-    from utils import parse_frontmatter, get_file_metadata
-    from config import (
-        VAULT_PATH, 
-        LANCE_DB_PATH, 
-        EMBEDDING_MODEL_NAME, 
-        CHUNK_SIZE, 
-        CHUNK_OVERLAP
-    )
+from obsidian.config import VAULT_PATH, CHUNK_SIZE, CHUNK_OVERLAP
+from obsidian.core import get_model, get_db, NoteChunk
+from obsidian.utils import parse_frontmatter, get_file_metadata
+
 
 # --- NOTES ---
 # Nomic requires the v1.5 specific model ID
@@ -39,37 +25,6 @@ except ImportError:
 # classification is used for STS-related tasks like rephrasals. clustering is used for tasks where the objective is to group
 # semantically similar texts close together.
 
-# --- DATABASE SCHEMA ---
-class NoteChunk(BaseModel):
-    id: str
-    filename: str
-    relative_path: str
-    title: str
-    content: str
-    vector: List[float]
-    note_type: str
-    created_date: str
-    status: str
-    tags: str
-    last_modified: float
-
-# --- INITIALIZATION ---
-model = None
-db = None
-
-def get_model():
-    global model
-    if model is None:
-        print(f"Loading {EMBEDDING_MODEL_NAME}...")
-        model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
-    return model
-
-def get_db():
-    global db
-    if db is None:
-        print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
-        db = lancedb.connect(LANCE_DB_PATH)
-    return db
 
 def chunk_markdown(content: str):
     """
@@ -109,7 +64,9 @@ def chunk_markdown(content: str):
                 
     return final_chunks
 
+
 def process_file(filepath: str, table):
+    """Process a single markdown file and add/update it in the database."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             raw_text = f.read()
@@ -151,7 +108,7 @@ def process_file(filepath: str, table):
             filename=os.path.basename(filepath),
             relative_path=relative_path,
             title=meta["title"],
-            content=chunk.page_content, # The clean text (without prefix)
+            content=chunk.page_content,  # The clean text (without prefix)
             vector=embeddings[i].tolist(),
             note_type=meta["note_type"],
             created_date=meta["created"],
@@ -165,8 +122,9 @@ def process_file(filepath: str, table):
     if records:
         table.add(records)
 
-# --- MAIN EXECUTION ---
+
 def main():
+    """Main ingestion function - walks vault and indexes all markdown files."""
     # Nomic v1.5 output dimension is 768
     database = get_db()
     table = database.create_table("notes", schema=NoteChunk, exist_ok=True)
@@ -184,6 +142,3 @@ def main():
                     print(f"Processed {files_processed} files...", end='\r')
 
     print(f"\nDone! Indexed {files_processed} files.")
-
-if __name__ == "__main__":
-    main()

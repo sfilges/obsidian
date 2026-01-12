@@ -1,12 +1,18 @@
+"""
+Document conversion module for obsidian package.
+
+Provides functions to convert PDFs to Obsidian-compatible markdown using Docling.
+"""
+
 from pathlib import Path
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableStructureOptions
-from utils import generate_frontmatter
+
+from obsidian.utils import generate_frontmatter
 
 
-# --- SETUP PIPELINE ---
-def get_converter():
+def get_converter() -> DocumentConverter:
     """
     Configures Docling with specific options for research papers:
     - Enables detailed table structure recognition
@@ -27,6 +33,13 @@ def get_converter():
 
 
 def process_paper(pdf_path: Path, vault_path: Path):
+    """
+    Process a single PDF and convert it to Obsidian markdown.
+    
+    Args:
+        pdf_path: Path to the PDF file
+        vault_path: Path to save the converted markdown
+    """
     print(f"📄 Processing: {pdf_path}...")
     
     converter = get_converter()
@@ -44,9 +57,9 @@ def process_paper(pdf_path: Path, vault_path: Path):
         frontmatter, title = generate_frontmatter(
             doc,
             pdf_path,
-            type ="paper",
-            status = "active",
-            tags = ["paper", "research-article"]
+            type="paper",
+            status="active",
+            tags=["paper", "research-article"]
         )
         
         # 4. Construct final file content
@@ -68,18 +81,15 @@ def process_paper(pdf_path: Path, vault_path: Path):
     except Exception as e:
         print(f"❌ Error processing {pdf_path}: {e}")
 
+
 def batch_convert_pdfs(pdf_paths: Path, vault_path: Path):
+    """
+    Convert all PDFs in a directory to markdown.
+    
+    Args:
+        pdf_paths: Directory containing PDFs (searched recursively)
+        vault_path: Path to save converted markdown files
+    """
     pdf_paths = Path(pdf_paths).glob("**/*.pdf")
     for pdf_path in pdf_paths:
         process_paper(pdf_path, vault_path)
-
-if __name__ == "__main__":
-    import sys
-    
-    # Check if a file path was provided
-    if len(sys.argv) < 2:
-        print("Usage: python convert_to_md.py <path_to_pdf> <vault_path>")
-    else:
-        input_pdf = sys.argv[1]
-        vault_path = sys.argv[2]
-        batch_convert_pdfs(input_pdf, vault_path)

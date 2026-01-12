@@ -1,35 +1,18 @@
-import lancedb
-from mcp.server.fastmcp import FastMCP
-from sentence_transformers import SentenceTransformer
-from typing import List
+"""
+MCP Server module for obsidian package.
 
-try:
-    from obsidian.config import LANCE_DB_PATH, VAULT_PATH, EMBEDDING_MODEL_NAME
-except ImportError:
-    from config import LANCE_DB_PATH, VAULT_PATH, EMBEDDING_MODEL_NAME
+Provides semantic search and note reading tools via Model Context Protocol.
+"""
+
+from mcp.server.fastmcp import FastMCP
+
+from obsidian.config import VAULT_PATH
+from obsidian.core import get_model, get_table
+
 
 # --- INITIALIZATION ---
-# We initialize the server name
 mcp = FastMCP("Obsidian-Vault")
 
-model = None
-db = None
-table = None
-
-def get_model():
-    global model
-    if model is None:
-        print("Loading Embedding Model... (this may take a moment)")
-        model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
-    return model
-
-def get_table():
-    global db, table
-    if db is None:
-        print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
-        db = lancedb.connect(LANCE_DB_PATH)
-        table = db.open_table("notes")
-    return table
 
 # --- TOOL 1: SEMANTIC SEARCH ---
 @mcp.tool()
@@ -68,6 +51,7 @@ def search_notes(query: str, limit: int = 5) -> str:
         
     return formatted_response
 
+
 # --- TOOL 2: READ FULL NOTE ---
 @mcp.tool()
 def read_full_note(filename: str) -> str:
@@ -97,8 +81,3 @@ def read_full_note(filename: str) -> str:
             
     except Exception as e:
         return f"Error reading file: {str(e)}"
-
-# --- ENTRY POINT ---
-if __name__ == "__main__":
-    # This runs the server over stdio (Standard Input/Output)
-    mcp.run()

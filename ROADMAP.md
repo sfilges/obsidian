@@ -15,3 +15,12 @@
 ## Low priority
 
 - [ ] Add pretty CLI output
+
+## Inspirations & Resources
+
+- [Obsidian](https://obsidian.md/)
+- [LanceDB](https://lancedb.com/)
+- [LangChain](https://docs.langchain.com/oss/python/langchain/overview)
+- [Docling](https://github.com/docling-project/docling)
+- [continuum](https://github.com/BioInfo/continuum/tree/main)
+- [obsidian-ai](https://pypi.org/project/obsidian-ai/)
