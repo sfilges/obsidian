@@ -32,7 +32,13 @@ MANIFEST
 *.manifest
 *.spec
 
-.vscode/
+.vscode
+
+.hatchling
+
+AGENTS.md
+CLAUDE.md
+GEMINI.md
 
 # Installer logs
 pip-log.txt

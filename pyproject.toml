@@ -29,7 +29,55 @@ obsidian = "obsidian.cli:app"
 [tool.hatch.build.targets.wheel]
 packages = ["src/obsidian"]
 
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "PLE",    # pylint errors
+    "PLR",    # pylint refactor
+    "PLW",    # pylint warnings
+    "T",      # flake8-print
+]
+ignore = [
+    "PLW0603",  # global-statement (needed for singleton pattern)
+    "E501",     # line-too-long (we use 120 chars)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/obsidian/cli.py" = ["T201", "T203"]  # Allow print statements in CLI
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+suppress-dummy-args = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["obsidian"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 120
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
 [project.optional-dependencies]
 test = [
-    "pytest>=8.0.0",
+    "pytest>=9.0.2",
+]
+dev = [
+    "ruff>=0.14.11",
 ]

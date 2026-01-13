@@ -7,24 +7,28 @@ Provides shared resources used across the package:
 - Database schema (NoteChunk)
 """
 
+import logging
+
 import lancedb
-from typing import List
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
-from obsidian.config import LANCE_DB_PATH, EMBEDDING_MODEL_NAME
+from obsidian.config import EMBEDDING_MODEL_NAME, LANCE_DB_PATH
+
+logger = logging.getLogger(__name__)
 
 
 # --- DATABASE SCHEMA ---
 # TODO: consider using from lancedb.pydantic import LanceModel
 class NoteChunk(BaseModel):
     """Schema for indexed note chunks in LanceDB."""
+
     id: str
     filename: str
     relative_path: str
     title: str
     content: str
-    vector: List[float]
+    vector: list[float]
     note_type: str
     created_date: str
     status: str
@@ -41,14 +45,14 @@ _table = None
 def get_model() -> SentenceTransformer:
     """
     Get the embedding model singleton.
-    
+
     Uses Nomic v1.5 which requires specific prefixes for asymmetric search:
     - Ingestion: "search_document: <text>"
     - Retrieval: "search_query: <text>"
     """
     global _model
     if _model is None:
-        print(f"Loading {EMBEDDING_MODEL_NAME}...")
+        logger.info("Loading %s...", EMBEDDING_MODEL_NAME)
         _model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
     return _model
 
@@ -57,7 +61,7 @@ def get_db() -> lancedb.DBConnection:
     """Get the LanceDB connection singleton."""
     global _db
     if _db is None:
-        print(f"Connecting to LanceDB at {LANCE_DB_PATH}...")
+        logger.info("Connecting to LanceDB at %s...", LANCE_DB_PATH)
         _db = lancedb.connect(LANCE_DB_PATH)
     return _db
 
@@ -65,11 +69,14 @@ def get_db() -> lancedb.DBConnection:
 def get_table():
     """
     Get the notes table from LanceDB.
-    
-    Creates the table if it doesn't exist.
+    Returns None if the table does not exist.
     """
     global _table
     if _table is None:
         db = get_db()
-        _table = db.open_table("notes")
+        try:
+            _table = db.open_table("notes")
+        except Exception:
+            # Table might not exist yet if 'obsidian lance' hasn't been run
+            return None
     return _table

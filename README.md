@@ -28,6 +28,49 @@ Run `obsidian config` to set up your initial configuration by following the inte
 
 To ingest your vault into a LanceDB database, run `obsidian lance`.
 
+## Logging
+
+The application automatically logs to `~/.obsidian/obsidian_rag.log` with the following features:
+
+- **Rotation**: Logs rotate at 10MB, keeping 5 backup files
+- **Levels**: DEBUG (default), INFO, WARNING, ERROR, CRITICAL
+- **Output**: Both file and console for visibility
+
+### Viewing Logs
+
+```bash
+# View logs in real-time
+tail -f ~/.obsidian/obsidian_rag.log
+
+# Search for errors
+grep ERROR ~/.obsidian/obsidian_rag.log
+
+# Filter by module
+grep obsidian.ingest ~/.obsidian/obsidian_rag.log
+```
+
+### Configuration
+
+```bash
+# Set log level (temporary)
+LOG_LEVEL=INFO obsidian lance
+
+# Set log level (persistent)
+export LOG_LEVEL=WARNING
+
+# Custom log directory
+LOG_DIR=/custom/path obsidian serve
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+| ----------- | ----------- | ----------- |
+| `LOG_LEVEL` | Logging verbosity (DEBUG/INFO/WARNING/ERROR) | `DEBUG` |
+| `LOG_DIR` | Directory for log files | `~/.obsidian` |
+| `LOG_MAX_BYTES` | Max size before rotation (bytes) | `10485760` (10MB) |
+| `LOG_BACKUP_COUNT` | Number of backup files to keep | `5` |
+
 ## Connect to Claude Desktop
 
 Now you must tell Claude Desktop where to find this server. Open your Claude config file:
