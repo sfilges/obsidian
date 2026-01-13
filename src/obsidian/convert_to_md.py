@@ -53,7 +53,7 @@ def process_paper(pdf_path: Path, vault_path: Path):
 
         # 3. Prepare Frontmatter
         frontmatter, title = generate_frontmatter(
-            doc, pdf_path, type="paper", status="active", tags=["paper", "research-article"]
+            doc, str(pdf_path), type="paper", status="active", tags=["paper", "research-article"]
         )
 
         # 4. Construct final file content
@@ -76,14 +76,14 @@ def process_paper(pdf_path: Path, vault_path: Path):
         logger.error("❌ Error processing %s: %s", pdf_path, e)
 
 
-def batch_convert_pdfs(pdf_paths: Path, vault_path: Path):
+def batch_convert_pdfs(input_dir: Path, vault_path: Path):
     """
     Convert all PDFs in a directory to markdown.
 
     Args:
-        pdf_paths: Directory containing PDFs (searched recursively)
+        input_dir: Directory containing PDFs (searched recursively)
         vault_path: Path to save converted markdown files
     """
-    pdf_paths = Path(pdf_paths).glob("**/*.pdf")
+    pdf_paths = Path(input_dir).glob("**/*.pdf")
     for pdf_path in pdf_paths:
         process_paper(pdf_path, vault_path)

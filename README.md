@@ -1,98 +1,75 @@
-# Obsidian Vault
+# Obsidian Vault RAG
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 
-Obsidian vault allows you to import an Obsidian/Markdown vault into a local LanceDB database and exposes it via MCP for Chatbot (e.g. Claude) access.
+**Obsidian Vault RAG** allows you to import your Obsidian markdown vault into a local LanceDB vector database and expose it via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) for AI agents like Claude.
+
+## Features
+- **Local RAG**: No data leaves your machine; embeddings are stored locally in LanceDB.
+- **Smart Ingestion**: Splits notes into chunks and generates embeddings.
+- **PDF Support**: Converts research papers and PDFs to Markdown using [Docling](https://github.com/DS4SD/docling).
+- **Claude Integration**: Connect your vault directly to Claude Desktop.
 
 ## Installation
 
-Clone the repository and install dependencies:
+Clone the repository and install the package:
 
 ```bash
+# Using pip
 pip install -e .
-```
 
-or with uv:
-
-```bash
+# OR using uv (recommended for speed)
 uv pip install .
 ```
 
-## Initial configuration
+## Quick Start
 
-Run `obsidian config` to set up your initial configuration by following the interactive wizard.
+1.  **Configure**: Run the setup wizard to link your vault.
+    ```bash
+    obsidian config
+    ```
+2.  **Ingest**: Index your notes into the database.
+    ```bash
+    obsidian lance
+    ```
+3.  **Serve**: Start the MCP server (or connect Claude, see below).
+    ```bash
+    obsidian serve
+    ```
 
-## File ingestion
+## Documentation
 
-To ingest your vault into a LanceDB database, run `obsidian lance`.
-
-## Logging
-
-The application automatically logs to `~/.obsidian/obsidian_rag.log` with the following features:
-
-- **Rotation**: Logs rotate at 10MB, keeping 5 backup files
-- **Levels**: DEBUG (default), INFO, WARNING, ERROR, CRITICAL
-- **Output**: Both file and console for visibility
-
-### Viewing Logs
-
-```bash
-# View logs in real-time
-tail -f ~/.obsidian/obsidian_rag.log
-
-# Search for errors
-grep ERROR ~/.obsidian/obsidian_rag.log
-
-# Filter by module
-grep obsidian.ingest ~/.obsidian/obsidian_rag.log
-```
-
-### Configuration
-
-```bash
-# Set log level (temporary)
-LOG_LEVEL=INFO obsidian lance
-
-# Set log level (persistent)
-export LOG_LEVEL=WARNING
-
-# Custom log directory
-LOG_DIR=/custom/path obsidian serve
-```
-
-### Environment Variables
-
-| Variable | Description | Default |
-| ----------- | ----------- | ----------- |
-| `LOG_LEVEL` | Logging verbosity (DEBUG/INFO/WARNING/ERROR) | `DEBUG` |
-| `LOG_DIR` | Directory for log files | `~/.obsidian` |
-| `LOG_MAX_BYTES` | Max size before rotation (bytes) | `10485760` (10MB) |
-| `LOG_BACKUP_COUNT` | Number of backup files to keep | `5` |
+- [**Usage Guide**](docs/usage.md): Detailed commands for ingestion, PDF conversion, and serving.
+- [**Configuration**](docs/configuration.md): Settings, environment variables, and logging.
 
 ## Connect to Claude Desktop
 
-Now you must tell Claude Desktop where to find this server. Open your Claude config file:
+To chat with your notes in Claude Desktop, add the server to your configuration file:
 
-- Mac: ~/Library/Application Support/Claude/claude_desktop_config.json
-- Windows: %APPDATA%\Claude\claude_desktop_config.json
+- **Mac**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add your server definition. You must use the absolute path to your Python executable (the one where you installed mcp and lancedb).
+Add the following entry (replace `/path/to/your/python` with your actual Python executable path):
 
 ```json
 {
   "mcpServers": {
     "obsidian-vault": {
-      "command": "/path/to/your/python/bin/python3",
+      "command": "/absolute/path/to/project/.venv/bin/python3",
       "args": [
-        "/path/to/your/project/server.py"
+        "-m",
+        "obsidian.cli",
+        "serve"
       ]
     }
   }
 }
 ```
 
-1. Restart the Claude Desktop app.
-2. Look for the 🔌 (Plug icon) in the top right. It should be green.
-3. Type: "What do my notes say about [Project X]?" You should see Claude show a little "Using Tool" animation, and then answer using the chunks retrieved from LanceDB.
+> **Tip:** You can find your python path by running `which python` (Mac/Linux) or `where python` (Windows) inside your project environment.
+
+## License
+
+MIT

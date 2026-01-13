@@ -11,7 +11,7 @@ import yaml
 from rich.console import Console
 from rich.prompt import Prompt
 
-from obsidian import ingest, server, convert_to_md
+from obsidian import convert_to_md, ingest, server
 from obsidian.config import CHUNK_OVERLAP, CHUNK_SIZE, CONFIG_FILE, EMBEDDING_MODEL_NAME, LANCE_DB_PATH, VAULT_PATH
 
 app = typer.Typer(help="Obsidian RAG CLI - Ingest and Chat with your notes.")

@@ -21,6 +21,7 @@ dependencies = [
     "typer>=0.15.0",
     "rich==13.7.0",
     "einops",
+    "ruff>=0.14.11",
 ]
 
 [project.scripts]
