@@ -38,7 +38,7 @@ class ObsidianConfig(BaseModel):
     embedding_model: str = Field(default="nomic-ai/nomic-embed-text-v1.5")
     chunk_size: int = Field(default=2000)
     chunk_overlap: int = Field(default=200)
-    extractor_backend: str = Field(default="none")
+    extractor_backend: str = Field(default="ollama")
     ollama_host: str = Field(default="http://localhost:11434")
     ollama_model: str = Field(default="llama3.2")
     anthropic_api_key: str | None = Field(default=None)

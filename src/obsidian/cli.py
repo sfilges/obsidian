@@ -48,6 +48,14 @@ def config(
     new_chunk_size = Prompt.ask("Enter Chunk Size", default=str(current.chunk_size))
     new_chunk_overlap = Prompt.ask("Enter Chunk Overlap", default=str(current.chunk_overlap))
 
+    # Extractor settings
+    new_extractor = Prompt.ask(
+        "Enter Extractor Backend (ollama, claude, gemini, none)",
+        default=current.extractor_backend,
+    )
+    new_ollama_host = Prompt.ask("Enter Ollama Host", default=current.ollama_host)
+    new_ollama_model = Prompt.ask("Enter Ollama Model", default=current.ollama_model)
+
     # Update config object (using copy to avoid mutating global state unexpectedly, though we just save it)
     updated_config = current.model_copy()
     updated_config.vault_path = new_vault_path
@@ -55,6 +63,9 @@ def config(
     updated_config.embedding_model = new_model
     updated_config.chunk_size = int(new_chunk_size)
     updated_config.chunk_overlap = int(new_chunk_overlap)
+    updated_config.extractor_backend = new_extractor
+    updated_config.ollama_host = new_ollama_host
+    updated_config.ollama_model = new_ollama_model
 
     config_path = save_config(updated_config)
     console.print(f"[green]Configuration saved to {config_path}[/green]")
@@ -96,7 +107,12 @@ def import_docs(
             raise typer.Exit(code=1)
 
     current = get_current_config()
-    output_p = Path(output_path).resolve() if output_path else current.vault_path
+    output_p = current.vault_path / output_path if output_path else current.vault_path
+    
+    # Ensure output directory exists
+    if not output_p.exists():
+        console.print(f"[blue]Creating directory: {output_p}[/blue]")
+        output_p.mkdir(parents=True, exist_ok=True)
 
     console.print(f"[bold green]Importing from {source} to {output_p}...[/bold green]")
     if extract:

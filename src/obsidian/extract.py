@@ -244,7 +244,15 @@ def extract_metadata(content: str) -> ExtractedMetadata:
         ExtractedMetadata with title, authors, summary, and tags
     """
     extractor = get_extractor()
-    return extractor.extract(content)
+    metadata = extractor.extract(content)
+    # Normalize tags: lower case and kebab-case
+    if metadata.tags:
+        metadata.tags = [
+            t.strip().lower().replace(" ", "-").replace("_", "-")
+            for t in metadata.tags
+            if t.strip()
+        ]
+    return metadata
 
 
 def extract_and_update_file(file_path: Path, update: bool = False, activate: bool = False) -> ExtractedMetadata:
