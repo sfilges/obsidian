@@ -20,27 +20,47 @@ logger = logging.getLogger(__name__)
 FRONTMATTER_DELIMITER_COUNT = 3
 
 
-def generate_frontmatter(doc, source_path: str, type: str = "general", status: str = "draft", tags: list | None = None):
+def generate_frontmatter(
+    doc,
+    source_path: str,
+    note_type: str = "general",
+    status: str = "draft",
+    tags: list | None = None,
+    authors: list | None = None,
+    summary: str = "",
+) -> tuple[str, str]:
     """
     Creates Obsidian-friendly YAML frontmatter.
-    """
-    if tags is None:
-        tags = []
 
+    Args:
+        doc: Document object with optional .name attribute
+        source_path: Path to the source file
+        note_type: Type of note (e.g., 'general', 'paper', 'concept')
+        status: Document status ('draft', 'active', 'pending', 'archived', 'deleted')
+        tags: List of tags for the document
+        authors: List of author names (for papers/articles)
+        summary: Brief summary or abstract of the document
+
+    Returns:
+        Tuple of (frontmatter_string, title)
+    """
     # Attempt to extract title, defaulting to filename if extraction fails
     title = doc.name if doc.name else Path(source_path).stem
 
-    # Current date for "Added" field
-    date_added = time.strftime("%Y-%m-%d")
+    frontmatter_dict = {
+        "id": str(uuid.uuid4()),
+        "title": title,
+        "authors": authors or [],
+        "summary": summary,
+        "type": note_type,
+        "status": status,
+        "created": time.strftime("%Y-%m-%d"),
+        "tags": tags or [],
+        "source": str(source_path),
+    }
 
     frontmatter = "---\n"
-    frontmatter += f"id: {uuid.uuid4()}\n"
-    frontmatter += f'title: "{title}"\n'
-    frontmatter += f"type: {type}\n"
-    frontmatter += f"status: {status}\n"
-    frontmatter += f"added: {date_added}\n"
-    frontmatter += f"tags: {tags}\n"
-    frontmatter += f"source: {source_path}\n"
+    frontmatter += yaml.dump(frontmatter_dict, default_flow_style=False, allow_unicode=True, sort_keys=False)
     frontmatter += "---\n\n"
 
     return frontmatter, title

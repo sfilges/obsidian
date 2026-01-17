@@ -11,6 +11,8 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableStructureOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
+from obsidian.config import EXTRACTOR_BACKEND
+from obsidian.extract import extract_metadata
 from obsidian.utils import generate_frontmatter
 
 logger = logging.getLogger(__name__)
@@ -30,13 +32,14 @@ def get_converter() -> DocumentConverter:
     return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)})
 
 
-def process_paper(pdf_path: Path, vault_path: Path):
+def process_paper(pdf_path: Path, vault_path: Path, extract: bool = False):
     """
     Process a single PDF and convert it to Obsidian markdown.
 
     Args:
         pdf_path: Path to the PDF file
         vault_path: Path to save the converted markdown
+        extract: If True, run LLM metadata extraction and set status to "active"
     """
     logger.info("📄 Processing: %s...", pdf_path)
 
@@ -51,15 +54,40 @@ def process_paper(pdf_path: Path, vault_path: Path):
         # Docling does a great job of converting tables to Markdown syntax automatically
         markdown_content = doc.export_to_markdown()
 
-        # 3. Prepare Frontmatter
+        # 3. Extract metadata using LLM (if requested and configured)
+        authors = []
+        summary = ""
+        tags = ["paper", "research-article"]
+        status = "pending"  # Default to pending
+
+        if extract and EXTRACTOR_BACKEND.lower() != "none":
+            logger.info("Extracting metadata using %s...", EXTRACTOR_BACKEND)
+            metadata = extract_metadata(markdown_content)
+            if metadata.authors:
+                authors = metadata.authors
+            if metadata.summary:
+                summary = metadata.summary
+            if metadata.tags:
+                tags = list(set(tags + metadata.tags))  # Merge with default tags
+            status = "active"  # Set to active after successful extraction
+        elif extract:
+            logger.warning("Extraction requested but no backend configured (EXTRACTOR_BACKEND=%s)", EXTRACTOR_BACKEND)
+
+        # 4. Prepare Frontmatter
         frontmatter, title = generate_frontmatter(
-            doc, str(pdf_path), type="paper", status="active", tags=["paper", "research-article"]
+            doc,
+            str(pdf_path),
+            note_type="paper",
+            status=status,
+            tags=tags,
+            authors=authors,
+            summary=summary,
         )
 
-        # 4. Construct final file content
+        # 5. Construct final file content
         final_content = frontmatter + markdown_content
 
-        # 5. Save to Obsidian
+        # 6. Save to Obsidian
         save_path = Path(vault_path)
         save_path.mkdir(parents=True, exist_ok=True)
 
@@ -76,14 +104,15 @@ def process_paper(pdf_path: Path, vault_path: Path):
         logger.error("❌ Error processing %s: %s", pdf_path, e)
 
 
-def batch_convert_pdfs(input_dir: Path, vault_path: Path):
+def batch_convert_pdfs(pdf_paths: Path, vault_path: Path, extract: bool = False):
     """
     Convert all PDFs in a directory to markdown.
 
     Args:
         input_dir: Directory containing PDFs (searched recursively)
         vault_path: Path to save converted markdown files
+        extract: If True, run LLM metadata extraction and set status to "active"
     """
     pdf_paths = Path(input_dir).glob("**/*.pdf")
     for pdf_path in pdf_paths:
-        process_paper(pdf_path, vault_path)
+        process_paper(pdf_path, vault_path, extract=extract)

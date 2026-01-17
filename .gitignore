@@ -36,6 +36,8 @@ MANIFEST
 
 .hatchling
 
+.claude/
+
 AGENTS.md
 CLAUDE.md
 GEMINI.md

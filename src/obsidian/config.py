@@ -42,6 +42,18 @@ EMBEDDING_MODEL_NAME = user_config.get("embedding_model", "nomic-ai/nomic-embed-
 CHUNK_SIZE = int(user_config.get("chunk_size", 2000))
 CHUNK_OVERLAP = int(user_config.get("chunk_overlap", 200))
 
+# --- LLM EXTRACTION SETTINGS ---
+# Backend for metadata extraction: "ollama", "claude", "gemini", or "none"
+EXTRACTOR_BACKEND = os.environ.get("EXTRACTOR_BACKEND") or user_config.get("extractor_backend", "none")
+
+# Ollama settings (for local LLM extraction)
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST") or user_config.get("ollama_host", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL") or user_config.get("ollama_model", "llama3.2")
+
+# API keys for cloud LLM providers (from env vars only for security)
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+
 # --- LOGGING CONFIGURATION ---
 LOG_DIR = Path(os.environ.get("LOG_DIR", "~/.obsidian")).expanduser()
 LOG_FILE = LOG_DIR / "obsidian_rag.log"
@@ -93,3 +105,36 @@ def setup_logging() -> None:
 
 # Initialize logging when config module is loaded
 setup_logging()
+
+
+def get_current_config() -> dict:
+    """
+    Return current configuration as a dictionary.
+
+    Returns all active configuration values (from env vars, config file, or defaults).
+    """
+    return {
+        "vault_path": str(VAULT_PATH),
+        "lancedb_path": str(LANCE_DB_PATH),
+        "embedding_model": EMBEDDING_MODEL_NAME,
+        "chunk_size": CHUNK_SIZE,
+        "chunk_overlap": CHUNK_OVERLAP,
+        "extractor_backend": EXTRACTOR_BACKEND,
+        "ollama_host": OLLAMA_HOST,
+        "ollama_model": OLLAMA_MODEL,
+    }
+
+
+def save_config(config_data: dict) -> Path:
+    """
+    Save configuration to YAML file.
+
+    Args:
+        config_data: Dictionary of configuration values to save
+
+    Returns:
+        Path to the saved configuration file
+    """
+    with open(CONFIG_FILE, "w") as f:
+        yaml.dump(config_data, f)
+    return CONFIG_FILE

@@ -76,7 +76,10 @@ def process_file(filepath: str, table):
 
     frontmatter, content = parse_frontmatter(raw_text)
 
-    if frontmatter.get("status") == "archived":
+    # Only index files with 'active' status (default for files without status)
+    status = frontmatter.get("status", "active")
+    if status != "active":
+        logger.debug("Skipping %s (status=%s)", filepath, status)
         return
 
     meta = get_file_metadata(filepath, frontmatter)
