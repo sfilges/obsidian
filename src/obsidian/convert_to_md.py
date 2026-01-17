@@ -104,7 +104,7 @@ def process_paper(pdf_path: Path, vault_path: Path, extract: bool = False):
         logger.error("❌ Error processing %s: %s", pdf_path, e)
 
 
-def batch_convert_pdfs(pdf_paths: Path, vault_path: Path, extract: bool = False):
+def batch_convert_pdfs(input_dir: Path, vault_path: Path, extract: bool = False):
     """
     Convert all PDFs in a directory to markdown.
 

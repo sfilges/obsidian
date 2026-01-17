@@ -8,6 +8,7 @@ from document content using local (Ollama) or cloud (Claude, Gemini) LLMs.
 import json
 import logging
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import httpx
 from pydantic import BaseModel, Field
@@ -246,7 +247,7 @@ def extract_metadata(content: str) -> ExtractedMetadata:
     return extractor.extract(content)
 
 
-def extract_and_update_file(file_path: "Path", update: bool = False, activate: bool = False) -> ExtractedMetadata:
+def extract_and_update_file(file_path: Path, update: bool = False, activate: bool = False) -> ExtractedMetadata:
     """
     Extract metadata from a markdown file and optionally update its frontmatter.
 
@@ -262,8 +263,6 @@ def extract_and_update_file(file_path: "Path", update: bool = False, activate: b
         FileNotFoundError: If file doesn't exist
         ValueError: If file is not markdown or no backend configured
     """
-    from pathlib import Path
-
     from obsidian.config import EXTRACTOR_BACKEND
     from obsidian.utils import generate_frontmatter, parse_frontmatter
 

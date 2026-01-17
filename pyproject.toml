@@ -56,7 +56,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/obsidian/cli.py" = ["T201", "T203"]  # Allow print statements in CLI
+"src/obsidian/cli.py" = ["T201", "T203", "B008"]  # Allow print statements and typer defaults in CLI
+"src/obsidian/utils.py" = ["PLR0913"]  # Allow many args for frontmatter generation
 
 [tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = true
