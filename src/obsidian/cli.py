@@ -11,7 +11,6 @@ import typer
 from rich.console import Console
 from rich.prompt import Prompt
 
-from obsidian import import_doc, ingest, server
 from obsidian.config import get_current_config, save_config
 
 app = typer.Typer(help="Obsidian RAG CLI - Ingest and Chat with your notes.")
@@ -78,6 +77,8 @@ def lance():
     """
     Ingest the Obsidian vault into LanceDB.
     """
+    from obsidian import ingest
+
     current = get_current_config()
     console.print(f"[bold green]Starting Ingestion for {current.vault_path}...[/bold green]")
     ingest.main()
@@ -95,6 +96,8 @@ def import_docs(
     By default, converted files have status="pending". Use --extract to run
     LLM metadata extraction and set status to "active" for immediate indexing.
     """
+    from obsidian import import_doc
+
     # Check if source is URL
     if source.startswith("http://") or source.startswith("https://"):
         input_source = source
@@ -133,6 +136,8 @@ def serve(mode: str = typer.Option("stdio", help="Server mode: 'stdio' or 'sse' 
     """
     Start the MCP Server.
     """
+    from obsidian import server
+
     console.print("[bold green]Starting MCP Server...[/bold green]")
     server.mcp.run()
 
