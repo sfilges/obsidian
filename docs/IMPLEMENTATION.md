@@ -11,7 +11,7 @@ The package lives in `src/obsidian/` with these core modules:
 - **core.py** - Database schema (`NoteChunk`) and singletons for embedding model, LanceDB connection, and table
 - **ingest.py** - Markdown ingestion pipeline with hybrid chunking (header-aware + recursive character splitting)
 - **server.py** - MCP server with `search_notes` and `read_full_note` tools
-- **convert_to_md.py** - PDF-to-Markdown conversion using Docling
+- **import_doc.py** - Document import (PDF, DOCX, HTML, etc.) using Docling
 - **extract.py** - LLM-based metadata extraction with pluggable backends (Ollama, Claude, Gemini)
 - **utils.py** - Frontmatter parsing and metadata utilities
 
@@ -77,17 +77,17 @@ The metadata should have a document_status tag: pending | active | archived | de
 ### Document Import Workflows
 
 **Default Workflow (Two-Step)**:
-1. `obsidian convert <dir>` → PDFs converted with `status="pending"`, no LLM extraction
+1. `obsidian import <dir>` → Documents converted with `status="pending"`, no LLM extraction
 2. User reviews markdown files in vault
 3. `obsidian extract <file.md> -u --activate` → Extracts metadata, sets `status="active"`
 4. `obsidian lance` → Indexes only active files
 
 **Quick Workflow (One-Step, for personal/low-volume use)**:
-1. `obsidian convert <dir> --extract` → PDFs converted with immediate LLM extraction, `status="active"`
+1. `obsidian import <dir> --extract` → Documents converted with immediate LLM extraction, `status="active"`
 2. `obsidian lance` → Indexes active files
 
 **CLI Flags**:
-- `obsidian convert --extract` (`-e`): Run LLM extraction during conversion, set status to "active"
+- `obsidian import --extract` (`-e`): Run LLM extraction during import, set status to "active"
 - `obsidian extract --update` (`-u`): Update file frontmatter with extracted metadata
 - `obsidian extract --activate` (`-a`): Set status to "active" (requires `-u`)
 
@@ -107,34 +107,30 @@ The vector database is generated and updated via the obsidian lance command.
 - [x] Improve frontmatter schema (id, title, authors, summary, type, status, created, tags, source)
 - [x] Make CLI user-friendly (Typer + Rich, interactive `obsidian config` wizard)
 - [x] Add `obsidian extract` command for standalone metadata extraction
-- [x] Add `obsidian convert` command for PDF-to-markdown conversion with Docling
+- [x] Add `obsidian import` command for document conversion (PDF, DOCX, etc.) with Docling
 
 **In Progress / TODO:**
 
 *Integration*
-- [x] Add `--extract` flag to `obsidian convert` for immediate LLM extraction + active status
+- [x] Add `--extract` flag to `obsidian import` for immediate LLM extraction + active status
 - [x] Add `--activate` flag to `obsidian extract` to set status to active
 - [ ] Integrate LLM extraction into `ingest.process_file()` - auto-extract metadata for files with incomplete frontmatter
 - [ ] Add frontmatter auto-repair in `ingest.process_file()` - fix/complete frontmatter during ingestion
 
 *Configuration & Validation*
-- [ ] Migrate `config.py` to Pydantic model for type validation and better defaults handling
-- [ ] Add `obsidian config --show` to display current configuration without interactive prompts
-- [ ] Add programmatic API for setting vault path (`set_vault_path()` function)
+- [x] Migrate `config.py` to Pydantic model for type validation and better defaults handling
+- [x] Add `obsidian config --show` to display current configuration without interactive prompts
+- [x] Add programmatic API for setting vault path (`set_vault_path()` function)
 
 *Database*
 - [ ] Add schema versioning field to `NoteChunk` for future migrations
 - [ ] Add `obsidian lance --force` to rebuild database from scratch
 
-*External Integrations*
-- [ ] Add Zotero batch import (`obsidian zotero <library_path>`)
-- [ ] Support BibTeX import for academic papers
-
 *Testing*
 - [ ] Add integration tests for `ingest.process_file()` with mock database
 - [ ] Add tests for `ingest.main()` end-to-end pipeline
 - [ ] Add tests for MCP server tools (`search_notes`, `read_full_note`)
-- [ ] Add tests for `convert_to_md` pipeline
+- [ ] Add tests for `import_doc` pipeline
 - [ ] Add mocked tests for Claude/Gemini/Ollama extractors
 
 ## Phase 2 (Custom Chatbot + RAG)

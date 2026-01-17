@@ -1,7 +1,8 @@
 """
-Document conversion module for obsidian package.
+Document import module for obsidian package.
 
-Provides functions to convert PDFs to Obsidian-compatible markdown using Docling.
+Provides functions to import documents (PDF, DOCX, HTML, etc.)
+and convert them to Obsidian-compatible markdown using Docling.
 """
 
 import logging
@@ -17,48 +18,61 @@ from obsidian.utils import generate_frontmatter
 
 logger = logging.getLogger(__name__)
 
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".html", ".htm", ".asciidoc", ".md"}
+
 
 def get_converter() -> DocumentConverter:
     """
-    Configures Docling with specific options for research papers:
-    - Enables detailed table structure recognition
-    - Enables OCR (useful for older scanned papers)
+    Configures Docling with specific options for research papers (PDF)
+    and enables support for other formats (DOCX, PPTX, HTML, etc.).
     """
     pipeline_options = PdfPipelineOptions()
     pipeline_options.do_ocr = True
     pipeline_options.do_table_structure = True
     pipeline_options.table_structure_options = TableStructureOptions(do_cell_matching=True)
 
-    return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)})
+    # Configure PDF options explicitly, other formats use defaults
+    return DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+        }
+    )
 
 
-def process_paper(pdf_path: Path, vault_path: Path, extract: bool = False):
+def import_file(source: str | Path, vault_path: Path, extract: bool = False):
     """
-    Process a single PDF and convert it to Obsidian markdown.
+    Process a single document (File or URL) and convert it to Obsidian markdown.
 
     Args:
-        pdf_path: Path to the PDF file
+        source: Path to the local file or URL string
         vault_path: Path to save the converted markdown
         extract: If True, run LLM metadata extraction and set status to "active"
     """
-    logger.info("📄 Processing: %s...", pdf_path)
+    logger.info("📄 Processing: %s...", source)
 
     converter = get_converter()
 
     try:
-        # 1. Convert the PDF
-        result = converter.convert(pdf_path)
+        # 1. Convert the Document (handling both Path and URL)
+        # Docling's convert method accepts Path or URL string
+        result = converter.convert(source)
         doc = result.document
 
         # 2. Export to Markdown
-        # Docling does a great job of converting tables to Markdown syntax automatically
         markdown_content = doc.export_to_markdown()
 
         # 3. Extract metadata using LLM (if requested and configured)
         authors = []
         summary = ""
-        tags = ["paper", "research-article"]
+        tags = ["imported-doc"]
         status = "pending"  # Default to pending
+
+        # Simple heuristic for tags
+        source_str = str(source).lower()
+        if source_str.endswith(".pdf"):
+            tags.append("document")
+        elif source_str.startswith("http"):
+            tags.append("web-clip")
 
         if extract and EXTRACTOR_BACKEND.lower() != "none":
             logger.info("Extracting metadata using %s...", EXTRACTOR_BACKEND)
@@ -76,8 +90,8 @@ def process_paper(pdf_path: Path, vault_path: Path, extract: bool = False):
         # 4. Prepare Frontmatter
         frontmatter, title = generate_frontmatter(
             doc,
-            str(pdf_path),
-            note_type="paper",
+            str(source),
+            note_type="resource",
             status=status,
             tags=tags,
             authors=authors,
@@ -93,6 +107,9 @@ def process_paper(pdf_path: Path, vault_path: Path, extract: bool = False):
 
         # Clean filename (remove illegal characters)
         safe_filename = "".join([c for c in title if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
+        if not safe_filename:
+            safe_filename = "untitled_import"
+
         output_file = save_path / f"{safe_filename}.md"
 
         with open(output_file, "w", encoding="utf-8") as f:
@@ -101,18 +118,37 @@ def process_paper(pdf_path: Path, vault_path: Path, extract: bool = False):
         logger.info("✅ Success! Saved to: %s", output_file)
 
     except Exception as e:
-        logger.error("❌ Error processing %s: %s", pdf_path, e)
+        logger.error("❌ Error processing %s: %s", source, e)
 
 
-def batch_convert_pdfs(input_dir: Path, vault_path: Path, extract: bool = False):
+def bulk_import(input_dir: Path, vault_path: Path, extract: bool = False):
     """
-    Convert all PDFs in a directory to markdown.
+    Convert all supported documents in a directory to markdown.
 
     Args:
-        input_dir: Directory containing PDFs (searched recursively)
+        input_dir: Directory containing documents (searched recursively)
         vault_path: Path to save converted markdown files
         extract: If True, run LLM metadata extraction and set status to "active"
     """
-    pdf_paths = Path(input_dir).glob("**/*.pdf")
-    for pdf_path in pdf_paths:
-        process_paper(pdf_path, vault_path, extract=extract)
+    input_path = Path(input_dir)
+    if not input_path.exists():
+         logger.error("Input directory %s does not exist", input_dir)
+         return
+
+    # Gather all matching files
+    files_to_process = []
+    for ext in SUPPORTED_EXTENSIONS:
+        files_to_process.extend(input_path.rglob(f"*{ext}"))
+        files_to_process.extend(input_path.rglob(f"*{ext.upper()}"))
+
+    # Remove duplicates
+    files_to_process = sorted(list(set(files_to_process)))
+
+    if not files_to_process:
+        logger.warning("No supported files found in %s", input_dir)
+        return
+
+    logger.info("Found %d files to import", len(files_to_process))
+
+    for file_path in files_to_process:
+        import_file(file_path, vault_path, extract=extract)

@@ -39,6 +39,29 @@ uv pip install .
     obsidian serve
     ```
 
+## Manual File Creation
+
+To manually add files to your vault, you can use an [Obsidian Template](https://help.obsidian.md/Plugins/Templates) to automatically insert the required metadata.
+
+Create a template file in your Obsidian templates folder with the following content:
+
+```yaml
+---
+id: {{date:YYYYMMDDHHmm}}
+title: {{title}}
+authors: []
+type: note
+status: active
+created: {{date:YYYY-MM-DD}} 
+tags: []
+source: "personal"
+---
+
+# {{title}}
+
+Your content here...
+```
+
 ## Documentation
 
 - [**Usage Guide**](docs/usage.md): Detailed commands for ingestion, PDF conversion, and serving.

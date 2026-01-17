@@ -11,7 +11,7 @@ import typer
 from rich.console import Console
 from rich.prompt import Prompt
 
-from obsidian import convert_to_md, ingest, server
+from obsidian import import_doc, ingest, server
 from obsidian.config import get_current_config, save_config
 
 app = typer.Typer(help="Obsidian RAG CLI - Ingest and Chat with your notes.")
@@ -30,37 +30,36 @@ def config(
 
     if show:
         console.print("[bold blue]Current Configuration:[/bold blue]")
-        for key, value in current.items():
+        for key, value in current.to_dict().items():
             console.print(f"  {key}: {value}")
         return
 
     console.print("[bold blue]Obsidian RAG Configuration[/bold blue]")
 
-    # Interactive prompts (UI concern stays in CLI)
-    new_vault = Prompt.ask("Enter your Obsidian Vault Path", default=current["vault_path"])
+    # Interactive prompts
+    new_vault = Prompt.ask("Enter your Obsidian Vault Path", default=str(current.vault_path))
     new_vault_path = Path(new_vault).expanduser().resolve()
 
     if not new_vault_path.exists():
         console.print(f"[yellow]Warning: Path {new_vault_path} does not exist.[/yellow]")
 
-    new_db = Prompt.ask("Enter LanceDB Path (where to store embeddings)", default=current["lancedb_path"])
-    new_model = Prompt.ask("Enter Embedding Model Name", default=current["embedding_model"])
-    new_chunk_size = Prompt.ask("Enter Chunk Size", default=str(current["chunk_size"]))
-    new_chunk_overlap = Prompt.ask("Enter Chunk Overlap", default=str(current["chunk_overlap"]))
+    new_db = Prompt.ask("Enter LanceDB Path (where to store embeddings)", default=str(current.lancedb_path))
+    new_model = Prompt.ask("Enter Embedding Model Name", default=current.embedding_model)
+    new_chunk_size = Prompt.ask("Enter Chunk Size", default=str(current.chunk_size))
+    new_chunk_overlap = Prompt.ask("Enter Chunk Overlap", default=str(current.chunk_overlap))
 
-    # Build config and save using core function
-    config_data = {
-        "vault_path": str(new_vault_path),
-        "lancedb_path": str(Path(new_db).expanduser().resolve()),
-        "embedding_model": new_model,
-        "chunk_size": int(new_chunk_size),
-        "chunk_overlap": int(new_chunk_overlap),
-    }
+    # Update config object (using copy to avoid mutating global state unexpectedly, though we just save it)
+    updated_config = current.model_copy()
+    updated_config.vault_path = new_vault_path
+    updated_config.lancedb_path = Path(new_db).expanduser().resolve()
+    updated_config.embedding_model = new_model
+    updated_config.chunk_size = int(new_chunk_size)
+    updated_config.chunk_overlap = int(new_chunk_overlap)
 
-    config_path = save_config(config_data)
+    config_path = save_config(updated_config)
     console.print(f"[green]Configuration saved to {config_path}[/green]")
-    console.print(f"Vault: {config_data['vault_path']}")
-    console.print(f"DB: {config_data['lancedb_path']}")
+    console.print(f"Vault: {updated_config.vault_path}")
+    console.print(f"DB: {updated_config.lancedb_path}")
 
 
 @app.command()
@@ -69,37 +68,48 @@ def lance():
     Ingest the Obsidian vault into LanceDB.
     """
     current = get_current_config()
-    console.print(f"[bold green]Starting Ingestion for {current['vault_path']}...[/bold green]")
+    console.print(f"[bold green]Starting Ingestion for {current.vault_path}...[/bold green]")
     ingest.main()
 
 
-@app.command()
-def convert(
-    input_path: str = typer.Argument(..., help="Path to directory containing files to convert"),
+@app.command(name="import")
+def import_docs(
+    source: str = typer.Argument(..., help="Path to file/directory or URL to import"),
     output_path: str = typer.Option(None, help="Output directory (defaults to configured Vault path)"),
     extract: bool = typer.Option(False, "--extract", "-e", help="Extract metadata with LLM and set status to active"),
 ):
     """
-    Convert PDFs to markdown and save to vault.
+    Import documents (PDF, DOCX, URL, etc.) to markdown and save to vault.
 
     By default, converted files have status="pending". Use --extract to run
     LLM metadata extraction and set status to "active" for immediate indexing.
     """
-    input_p = Path(input_path).resolve()
-    if not input_p.exists():
-        console.print(f"[bold red]Error: Input path {input_p} does not exist.[/bold red]")
-        raise typer.Exit(code=1)
+    # Check if source is URL
+    if source.startswith("http://") or source.startswith("https://"):
+        input_source = source
+        is_url = True
+    else:
+        input_source = Path(source).resolve()
+        is_url = False
+        if not input_source.exists():
+            console.print(f"[bold red]Error: Input source {input_source} does not exist.[/bold red]")
+            raise typer.Exit(code=1)
 
     current = get_current_config()
-    output_p = Path(output_path).resolve() if output_path else Path(current["vault_path"])
+    output_p = Path(output_path).resolve() if output_path else current.vault_path
 
-    console.print(f"[bold green]Converting PDFs from {input_p} to {output_p}...[/bold green]")
+    console.print(f"[bold green]Importing from {source} to {output_p}...[/bold green]")
     if extract:
         console.print("[blue]Metadata extraction enabled - files will be set to 'active'[/blue]")
     else:
         console.print("[blue]Files will be saved with status='pending'[/blue]")
-    convert_to_md.batch_convert_pdfs(input_p, output_p, extract=extract)
-    console.print("[bold green]Conversion complete![/bold green]")
+
+    if is_url or input_source.is_file():
+        import_doc.import_file(input_source, output_p, extract=extract)
+    elif input_source.is_dir():
+        import_doc.bulk_import(input_source, output_p, extract=extract)
+
+    console.print("[bold green]Import complete![/bold green]")
 
 
 @app.command()
@@ -131,7 +141,7 @@ def extract(
 
     current = get_current_config()
     console.print(f"[bold blue]Extracting metadata from {file_path.name}...[/bold blue]")
-    console.print(f"Using backend: {current['extractor_backend']}")
+    console.print(f"Using backend: {current.extractor_backend}")
 
     try:
         metadata = extract_and_update_file(file_path.resolve(), update=update, activate=activate)
