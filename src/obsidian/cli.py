@@ -211,6 +211,7 @@ def chat(
     from rich.live import Live
     from rich.markdown import Markdown
     from rich.panel import Panel
+    from rich.rule import Rule
     from rich.tree import Tree
 
     from obsidian.chat import ChatSession, get_chat_client
@@ -248,7 +249,8 @@ def chat(
     # Chat loop
     while True:
         try:
-            user_input = console.input("[bold green]You:[/bold green] ").strip()
+            console.rule(style="dim")
+            user_input = console.input("\n[bold green]User:[/bold green] ").strip()
         except (KeyboardInterrupt, EOFError):
             console.print("\n[dim]Goodbye![/dim]")
             break
@@ -276,7 +278,7 @@ def chat(
 
         # Send message and get response
         try:
-            console.print("[bold blue]Assistant:[/bold blue]")
+            console.print()
 
             with console.status("[bold green]Thinking...[/bold green]", spinner="dots"):
                 response_gen, context_chunks = session.stream_send(user_input)
@@ -290,6 +292,8 @@ def chat(
                     tree.add(f"[cyan]{title}[/cyan] [dim]({path})[/dim]")
                 console.print(tree)
                 console.print()
+
+            console.print("[bold blue]Obsidian:[/bold blue]")
 
             # Stream response
             response_text = ""

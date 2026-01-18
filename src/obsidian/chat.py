@@ -447,7 +447,7 @@ def search_context(query: str, limit: int = CHAT_CONTEXT_LIMIT) -> list[dict]:
 
     model = get_model()
     # Nomic requires "search_query: " prefix for retrieval
-    query_vector = model.encode(f"search_query: {query}")
+    query_vector = model.encode(f"search_query: {query}", show_progress_bar=False, verbose=False)
 
     try:
         results = table.search(query_vector).limit(limit).to_list()
