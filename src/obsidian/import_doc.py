@@ -18,6 +18,13 @@ from obsidian.utils import generate_frontmatter
 
 logger = logging.getLogger(__name__)
 
+# Suppress verbose DEBUG output from Docling and HTTP client libraries
+for _noisy_logger in (
+    "docling", "docling_core", "docling_parse", "docling_ibm_models",
+    "httpcore", "httpx", "urllib3",
+):
+    logging.getLogger(_noisy_logger).setLevel(logging.INFO)
+
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".html", ".htm", ".asciidoc", ".md"}
 
 

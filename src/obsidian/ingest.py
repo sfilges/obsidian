@@ -128,9 +128,8 @@ def process_file(filepath: str, table):
 
 def main():
     """Main ingestion function - walks vault and indexes all markdown files."""
-    # Nomic v1.5 output dimension is 768
     database = get_db()
-    table = database.create_table("notes", schema=NoteChunk, exist_ok=True)
+    table = database.create_table("notes", schema=NoteChunk.to_arrow_schema(), exist_ok=True)
 
     logger.info("Scanning %s...", VAULT_PATH)
 

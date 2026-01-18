@@ -9,6 +9,7 @@ Before using the tool, run the configuration wizard to link your vault:
 ```bash
 obsidian config
 ```
+
 Follow the prompts to set your vault path and database location.
 
 ## 2. Document Conversion (PDF to Markdown)
@@ -24,6 +25,7 @@ obsidian convert /path/to/pdf/folder --output-path /path/to/output
 ```
 
 The converter will:
+
 - Extract text and tables.
 - Generate frontmatter with metadata (title, tags like `research-article`).
 - Sanitize filenames.
@@ -37,6 +39,7 @@ obsidian lance
 ```
 
 This command:
+
 1. Scans your `vault_path` for Markdown files.
 2. Splits content into chunks (based on `chunk_size` config).
 3. Generates embeddings using the configured model.
@@ -55,7 +58,9 @@ obsidian serve
 This runs a stdio-based server that Claude Desktop connects to. See the [README](../README.md#connect-to-claude-desktop) for Claude configuration instructions.
 
 ### Troubleshooting
+
 If the server doesn't start or Claude can't connect, check the logs:
+
 ```bash
 tail -f ~/.obsidian/obsidian_rag.log
 ```

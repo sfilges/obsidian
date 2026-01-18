@@ -41,6 +41,9 @@ class ObsidianConfig(BaseModel):
     extractor_backend: str = Field(default="ollama")
     ollama_host: str = Field(default="http://localhost:11434")
     ollama_model: str = Field(default="llama3.2")
+    ollama_num_ctx: int | None = Field(default=None, description="Override Ollama context window size")
+    ollama_max_content_length: int = Field(default=12000, description="Max content chars for Ollama extraction")
+    api_max_content_length: int = Field(default=64000, description="Max content chars for API extraction")
     anthropic_api_key: str | None = Field(default=None)
     google_api_key: str | None = Field(default=None)
 
@@ -55,6 +58,9 @@ class ObsidianConfig(BaseModel):
             "extractor_backend": self.extractor_backend,
             "ollama_host": self.ollama_host,
             "ollama_model": self.ollama_model,
+            "ollama_num_ctx": self.ollama_num_ctx,
+            "ollama_max_content_length": self.ollama_max_content_length,
+            "api_max_content_length": self.api_max_content_length,
         }
 
 
@@ -92,9 +98,16 @@ def load_config() -> ObsidianConfig:
     merge("extractor_backend", "EXTRACTOR_BACKEND")
     merge("ollama_host", "OLLAMA_HOST")
     merge("ollama_model", "OLLAMA_MODEL")
+    merge("ollama_num_ctx", "OLLAMA_NUM_CTX")
+    file_only("ollama_max_content_length")
+    file_only("api_max_content_length")
 
     merge("anthropic_api_key", "ANTHROPIC_API_KEY")
     merge("google_api_key", "GOOGLE_API_KEY")
+
+    # Convert string to int for num_ctx if loaded from env
+    if "ollama_num_ctx" in config_dict and config_dict["ollama_num_ctx"] is not None:
+        config_dict["ollama_num_ctx"] = int(config_dict["ollama_num_ctx"])
 
     return ObsidianConfig(**config_dict)
 
@@ -133,6 +146,9 @@ CHUNK_OVERLAP = CURRENT_CONFIG.chunk_overlap
 EXTRACTOR_BACKEND = CURRENT_CONFIG.extractor_backend
 OLLAMA_HOST = CURRENT_CONFIG.ollama_host
 OLLAMA_MODEL = CURRENT_CONFIG.ollama_model
+OLLAMA_NUM_CTX = CURRENT_CONFIG.ollama_num_ctx
+OLLAMA_MAX_CONTENT_LENGTH = CURRENT_CONFIG.ollama_max_content_length
+API_MAX_CONTENT_LENGTH = CURRENT_CONFIG.api_max_content_length
 ANTHROPIC_API_KEY = CURRENT_CONFIG.anthropic_api_key
 GOOGLE_API_KEY = CURRENT_CONFIG.google_api_key
 

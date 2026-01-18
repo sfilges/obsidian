@@ -10,7 +10,7 @@ Provides shared resources used across the package:
 import logging
 
 import lancedb
-from pydantic import BaseModel
+from lancedb.pydantic import LanceModel, Vector
 from sentence_transformers import SentenceTransformer
 
 from obsidian.config import EMBEDDING_MODEL_NAME, LANCE_DB_PATH
@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 # --- DATABASE SCHEMA ---
-# TODO: consider using from lancedb.pydantic import LanceModel
-class NoteChunk(BaseModel):
+class NoteChunk(LanceModel):
     """Schema for indexed note chunks in LanceDB."""
 
     id: str
@@ -28,7 +27,7 @@ class NoteChunk(BaseModel):
     relative_path: str
     title: str
     content: str
-    vector: list[float]
+    vector: Vector(768)  # Nomic v1.5 output dimension
     note_type: str
     created_date: str
     status: str

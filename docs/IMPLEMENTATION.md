@@ -15,29 +15,31 @@ The package lives in `src/obsidian/` with these core modules:
 - **extract.py** - LLM-based metadata extraction with pluggable backends (Ollama, Claude, Gemini)
 - **utils.py** - Frontmatter parsing and metadata utilities
 
-**Tech Stack**
+### Tech Stack
 
-1.  **Package Manager**: Use `uv` for environment management and dependency resolution.
-2.  **Linter/Formatter**: Assume `ruff` is used. Adhere to PEP 8 but prefer modern concise syntax.
-3.  **DataFrames**: Use `polars` instead of `pandas`. Prefer LazyFrames (`scan_csv`, `scan_parquet`) over eager execution.
-4.  **Data Validation**: Use `pydantic` (v2+) for all data modeling and configuration management.
-5.  **CLI**: Use `typer` for command-line interfaces. Use `rich` for terminal output.
-6.  **Build Backend**: Use `hatchling` in `pyproject.toml`.
-7.  **HTTP Client**: Use `httpx` for HTTP requests (async-capable, modern API).
+1. **Package Manager**: Use `uv` for environment management and dependency resolution.
+2. **Linter/Formatter**: Assume `ruff` is used. Adhere to PEP 8 but prefer modern concise syntax.
+3. **DataFrames**: Use `polars` instead of `pandas`. Prefer LazyFrames (`scan_csv`, `scan_parquet`) over eager execution.
+4. **Data Validation**: Use `pydantic` (v2+) for all data modeling and configuration management.
+5. **CLI**: Use `typer` for command-line interfaces. Use `rich` for terminal output.
+6. **Build Backend**: Use `hatchling` in `pyproject.toml`.
+7. **HTTP Client**: Use `httpx` for HTTP requests (async-capable, modern API).
 
 ## Configuration
 
 Settings are loaded from `~/.obsidian_rag_config.yaml` with environment variable overrides.
 
-**Core Settings**
+### Core Settings
+
 - `vault_path` / `VAULT_PATH` - Path to Obsidian vault
 - `lancedb_path` / `LANCE_DB_PATH` - Path to LanceDB storage
 - `embedding_model` - SentenceTransformer model (default: nomic-ai/nomic-embed-text-v1.5)
 - `chunk_size` / `chunk_overlap` - Chunking parameters (default: 2000/200)
 
-**LLM Extraction Settings**
+### LLM Extraction Settings
+
 - `extractor_backend` / `EXTRACTOR_BACKEND` - Backend: "ollama", "claude", "gemini", or "none"
-- `ollama_host` / `OLLAMA_HOST` - Ollama API URL (default: http://localhost:11434)
+- `ollama_host` / `OLLAMA_HOST` - Ollama API URL (default: <http://localhost:11434>)
 - `ollama_model` / `OLLAMA_MODEL` - Ollama model name (default: llama3.2)
 - `ANTHROPIC_API_KEY` - Claude API key (env var only)
 - `GOOGLE_API_KEY` - Gemini API key (env var only)
@@ -71,22 +73,26 @@ The metadata should have a document_status tag: pending | active | archived | de
 - deleted signals soft deletion
 
 **Status handling during ingestion:**
+
 - `active` - Indexed into vector database (default if status missing)
 - `pending`, `archived`, `deleted` - Skipped during ingestion
 
 ### Document Import Workflows
 
 **Default Workflow (Two-Step)**:
+
 1. `obsidian import <dir>` → Documents converted with `status="pending"`, no LLM extraction
 2. User reviews markdown files in vault
 3. `obsidian extract <file.md> -u --activate` → Extracts metadata, sets `status="active"`
 4. `obsidian lance` → Indexes only active files
 
 **Quick Workflow (One-Step, for personal/low-volume use)**:
+
 1. `obsidian import <dir> --extract` → Documents converted with immediate LLM extraction, `status="active"`
 2. `obsidian lance` → Indexes active files
 
 **CLI Flags**:
+
 - `obsidian import --extract` (`-e`): Run LLM extraction during import, set status to "active"
 - `obsidian extract --update` (`-u`): Update file frontmatter with extracted metadata
 - `obsidian extract --activate` (`-a`): Set status to "active" (requires `-u`)
@@ -99,10 +105,10 @@ The CLI module should only contain thin wrappers around core modules.
 
 The vector database is generated and updated via the obsidian lance command.
 
-
 ### Phase 1 Checklist
 
 **Completed:**
+
 - [x] Enable LLM metadata extraction (`extract.py` with Ollama/Claude/Gemini backends)
 - [x] Improve frontmatter schema (id, title, authors, summary, type, status, created, tags, source)
 - [x] Make CLI user-friendly (Typer + Rich, interactive `obsidian config` wizard)
@@ -112,21 +118,25 @@ The vector database is generated and updated via the obsidian lance command.
 **In Progress / TODO:**
 
 *Integration*
+
 - [x] Add `--extract` flag to `obsidian import` for immediate LLM extraction + active status
 - [x] Add `--activate` flag to `obsidian extract` to set status to active
 - [ ] Integrate LLM extraction into `ingest.process_file()` - auto-extract metadata for files with incomplete frontmatter
 - [ ] Add frontmatter auto-repair in `ingest.process_file()` - fix/complete frontmatter during ingestion
 
 *Configuration & Validation*
+
 - [x] Migrate `config.py` to Pydantic model for type validation and better defaults handling
 - [x] Add `obsidian config --show` to display current configuration without interactive prompts
 - [x] Add programmatic API for setting vault path (`set_vault_path()` function)
 
 *Database*
+
 - [ ] Add schema versioning field to `NoteChunk` for future migrations
 - [ ] Add `obsidian lance --force` to rebuild database from scratch
 
 *Testing*
+
 - [ ] Add integration tests for `ingest.process_file()` with mock database
 - [ ] Add tests for `ingest.main()` end-to-end pipeline
 - [ ] Add tests for MCP server tools (`search_notes`, `read_full_note`)
@@ -140,6 +150,7 @@ A terminal-based chatbot with RAG using LanceDB vector search. Supports local LL
 ### Architecture
 
 New module `chat.py` with:
+
 - `ConversationHistory` - In-memory conversation state
 - `BaseChatClient` - Abstract base for LLM clients
 - `OllamaChatClient`, `ClaudeChatClient`, `GeminiChatClient` - Backend implementations
@@ -155,6 +166,7 @@ obsidian chat --context 10       # Retrieve 10 context chunks (default: 5)
 ```
 
 **Terminal UI (Rich):**
+
 - Colored prompts (green for user, blue for assistant)
 - Markdown rendering for responses
 - Special commands: `exit`, `clear`, `help`
@@ -190,6 +202,7 @@ Guidelines:
 ### Phase 2 Checklist
 
 **Core Implementation:**
+
 - [ ] Create `chat.py` module with data classes and ConversationHistory
 - [ ] Implement `OllamaChatClient` (POST to /api/chat)
 - [ ] Implement `ClaudeChatClient` (POST to /v1/messages)
@@ -200,16 +213,17 @@ Guidelines:
 - [ ] Add chat configuration to `config.py`
 
 **Testing:**
+
 - [ ] Add tests for ConversationHistory
 - [ ] Add tests for context formatting
 - [ ] Add mocked tests for chat clients
 
 **Future Enhancements (not in initial scope):**
+
 - [ ] Streaming responses for better UX
 - [ ] Session persistence to JSON files
 - [ ] `--resume` flag for continuing sessions
 - [ ] Token/cost tracking
-
 
 ## Inspirations & Resources
 
@@ -223,24 +237,29 @@ Guidelines:
 ## Coding Standards
 
 ## 1. Filesystem
+
 - **ALWAYS** use `pathlib.Path` for file manipulation.
 - **NEVER** use `os.path` or string concatenation for paths.
 
 ## 2. Typing
+
 - Python 3.10+ type syntax is required (use `|` instead of `Union`, `list[str]` instead of `List[str]`).
 - All function signatures must be fully type-hinted.
 - Use `typing.NewType` or `pydantic` models for complex data structures, avoiding nested dicts/lists.
 
 ## 3. Configuration
+
 - All project metadata must reside in `pyproject.toml`.
 - Do not generate `setup.py` or `requirements.txt` (unless as output from `uv pip compile`).
 
 ## 4. Error Handling & Logic
+
 - Use `tenacity` for retries on network/IO operations.
 - Use `loguru` for logging (not standard `logging`).
 - Prefer `f-strings` over `.format()`.
 
 ## 5. Testing
+
 - Use `pytest`.
 - Use `pytest.fixture` for setup/teardown.
 - Use `conftest.py` for shared fixtures.

@@ -15,17 +15,16 @@ from pydantic import BaseModel, Field
 
 from obsidian.config import (
     ANTHROPIC_API_KEY,
+    API_MAX_CONTENT_LENGTH,
     EXTRACTOR_BACKEND,
     GOOGLE_API_KEY,
     OLLAMA_HOST,
+    OLLAMA_MAX_CONTENT_LENGTH,
     OLLAMA_MODEL,
+    OLLAMA_NUM_CTX,
 )
 
 logger = logging.getLogger(__name__)
-
-# Content truncation limits to avoid context length issues
-OLLAMA_MAX_CONTENT_LENGTH = 4000
-API_MAX_CONTENT_LENGTH = 8000
 
 
 class ExtractedMetadata(BaseModel):
@@ -68,25 +67,37 @@ class NoOpExtractor(BaseExtractor):
 class OllamaExtractor(BaseExtractor):
     """Extractor using local Ollama LLM."""
 
-    def __init__(self, host: str = OLLAMA_HOST, model: str = OLLAMA_MODEL):
+    def __init__(
+        self,
+        host: str = OLLAMA_HOST,
+        model: str = OLLAMA_MODEL,
+        num_ctx: int | None = OLLAMA_NUM_CTX,
+    ):
         self.host = host.rstrip("/")
         self.model = model
+        self.num_ctx = num_ctx
 
     def extract(self, content: str) -> ExtractedMetadata:
         # Truncate content to avoid context length issues
-        truncated = content[:OLLAMA_MAX_CONTENT_LENGTH] if len(content) > OLLAMA_MAX_CONTENT_LENGTH else content
+        max_len = OLLAMA_MAX_CONTENT_LENGTH
+        truncated = content[:max_len] if len(content) > max_len else content
         prompt = EXTRACTION_PROMPT.format(content=truncated)
 
         try:
             with httpx.Client(timeout=60.0) as client:
+                payload = {
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",
+                }
+                # Add num_ctx option if configured
+                if self.num_ctx is not None:
+                    payload["options"] = {"num_ctx": self.num_ctx}
+
                 response = client.post(
                     f"{self.host}/api/generate",
-                    json={
-                        "model": self.model,
-                        "prompt": prompt,
-                        "stream": False,
-                        "format": "json",
-                    },
+                    json=payload,
                 )
                 response.raise_for_status()
                 result = response.json()
