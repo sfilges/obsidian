@@ -111,7 +111,7 @@ def import_docs(
 
     current = get_current_config()
     output_p = current.vault_path / output_path if output_path else current.vault_path
-    
+
     # Ensure output directory exists
     if not output_p.exists():
         console.print(f"[blue]Creating directory: {output_p}[/blue]")
@@ -183,3 +183,100 @@ def extract(
     except ValueError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1) from None
+
+
+@app.command()
+def chat(
+    no_rag: bool = typer.Option(False, "--no-rag", help="Disable RAG context retrieval"),
+    context: int = typer.Option(5, "--context", "-c", help="Number of context chunks to retrieve"),
+):
+    """
+    Interactive RAG chat with your notes.
+
+    Uses LanceDB vector search to retrieve relevant context from your vault
+    and generates responses using the configured LLM backend.
+    """
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+
+    from obsidian.chat import ChatSession, format_context_summary, get_chat_client
+    from obsidian.core import get_table
+
+    current = get_current_config()
+
+    # Check if RAG is available
+    use_rag = not no_rag
+    if use_rag and get_table() is None:
+        console.print(
+            "[yellow]Warning: LanceDB table not found. Run 'obsidian lance' first to enable RAG.[/yellow]"
+        )
+        console.print("[yellow]Continuing in no-RAG mode...[/yellow]\n")
+        use_rag = False
+
+    # Initialize session
+    try:
+        client = get_chat_client()
+    except ValueError as e:
+        console.print(f"[bold red]Error initializing chat client: {e}[/bold red]")
+        raise typer.Exit(code=1) from None
+
+    session = ChatSession(client=client, use_rag=use_rag, context_limit=context)
+
+    # Welcome message
+    console.print(Panel.fit(
+        f"[bold blue]Obsidian Chat[/bold blue]\n"
+        f"Backend: {current.chat_backend} ({current.chat_model})\n"
+        f"RAG: {'enabled' if use_rag else 'disabled'}"
+        + (f" (context: {context} chunks)" if use_rag else ""),
+        title="Welcome",
+    ))
+    console.print("Type [bold]help[/bold] for commands, [bold]exit[/bold] to quit.\n")
+
+    # Chat loop
+    while True:
+        try:
+            user_input = console.input("[bold green]You:[/bold green] ").strip()
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[dim]Goodbye![/dim]")
+            break
+
+        if not user_input:
+            continue
+
+        # Handle special commands
+        cmd = user_input.lower()
+        if cmd in ("exit", "quit", "q"):
+            console.print("[dim]Goodbye![/dim]")
+            break
+        elif cmd == "clear":
+            session.clear()
+            console.print("[dim]Conversation history cleared.[/dim]\n")
+            continue
+        elif cmd == "help":
+            console.print(
+                "[bold]Commands:[/bold]\n"
+                "  [cyan]exit[/cyan], [cyan]quit[/cyan], [cyan]q[/cyan] - Exit chat\n"
+                "  [cyan]clear[/cyan] - Clear conversation history\n"
+                "  [cyan]help[/cyan] - Show this help\n"
+            )
+            continue
+
+        # Send message and get response
+        try:
+            response, context_chunks = session.send(user_input)
+
+            # Show retrieved context if available
+            if context_chunks:
+                context_summary = format_context_summary(context_chunks)
+                console.print(f"\n[dim]{context_summary}[/dim]\n")
+
+            # Display response with markdown rendering
+            console.print("[bold blue]Assistant:[/bold blue]")
+            console.print(Markdown(response))
+            console.print()
+
+        except RuntimeError as e:
+            console.print(f"[bold red]Error: {e}[/bold red]\n")
+        except Exception as e:
+            console.print(f"[bold red]Unexpected error: {e}[/bold red]\n")
+

@@ -46,6 +46,11 @@ class ObsidianConfig(BaseModel):
     api_max_content_length: int = Field(default=64000, description="Max content chars for API extraction")
     anthropic_api_key: str | None = Field(default=None)
     google_api_key: str | None = Field(default=None)
+    # Chat settings
+    chat_backend: str = Field(default="ollama", description="LLM backend for chat: ollama, claude, gemini")
+    chat_model: str = Field(default="gemma3:27b", description="Model for chat (more powerful than extractor)")
+    chat_max_turns: int = Field(default=10, description="Max conversation history turns")
+    chat_context_limit: int = Field(default=5, description="Number of RAG context chunks to retrieve")
 
     def to_dict(self) -> dict:
         """Convert config to dictionary suitable for saving."""
@@ -61,6 +66,10 @@ class ObsidianConfig(BaseModel):
             "ollama_num_ctx": self.ollama_num_ctx,
             "ollama_max_content_length": self.ollama_max_content_length,
             "api_max_content_length": self.api_max_content_length,
+            "chat_backend": self.chat_backend,
+            "chat_model": self.chat_model,
+            "chat_max_turns": self.chat_max_turns,
+            "chat_context_limit": self.chat_context_limit,
         }
 
 
@@ -105,9 +114,19 @@ def load_config() -> ObsidianConfig:
     merge("anthropic_api_key", "ANTHROPIC_API_KEY")
     merge("google_api_key", "GOOGLE_API_KEY")
 
-    # Convert string to int for num_ctx if loaded from env
+    # Chat settings
+    merge("chat_backend", "CHAT_BACKEND")
+    merge("chat_model", "CHAT_MODEL")
+    merge("chat_max_turns", "CHAT_MAX_TURNS")
+    merge("chat_context_limit", "CHAT_CONTEXT_LIMIT")
+
     if "ollama_num_ctx" in config_dict and config_dict["ollama_num_ctx"] is not None:
         config_dict["ollama_num_ctx"] = int(config_dict["ollama_num_ctx"])
+    # Convert string to int for chat settings if loaded from env
+    if "chat_max_turns" in config_dict:
+        config_dict["chat_max_turns"] = int(config_dict["chat_max_turns"])
+    if "chat_context_limit" in config_dict:
+        config_dict["chat_context_limit"] = int(config_dict["chat_context_limit"])
 
     return ObsidianConfig(**config_dict)
 
@@ -129,7 +148,7 @@ def setup_logging() -> None:
     root_logger.addHandler(file_handler)
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(getattr(logging, LOG_LEVEL, logging.DEBUG))
+    console_handler.setLevel(logging.WARNING)  # Only show warnings/errors in terminal
     console_handler.setFormatter(logging.Formatter(log_format, date_format))
     root_logger.addHandler(console_handler)
 
@@ -151,6 +170,10 @@ OLLAMA_MAX_CONTENT_LENGTH = CURRENT_CONFIG.ollama_max_content_length
 API_MAX_CONTENT_LENGTH = CURRENT_CONFIG.api_max_content_length
 ANTHROPIC_API_KEY = CURRENT_CONFIG.anthropic_api_key
 GOOGLE_API_KEY = CURRENT_CONFIG.google_api_key
+CHAT_BACKEND = CURRENT_CONFIG.chat_backend
+CHAT_MODEL = CURRENT_CONFIG.chat_model
+CHAT_MAX_TURNS = CURRENT_CONFIG.chat_max_turns
+CHAT_CONTEXT_LIMIT = CURRENT_CONFIG.chat_context_limit
 
 
 def get_current_config() -> ObsidianConfig:

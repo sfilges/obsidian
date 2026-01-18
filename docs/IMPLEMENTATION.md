@@ -203,20 +203,20 @@ Guidelines:
 
 **Core Implementation:**
 
-- [ ] Create `chat.py` module with data classes and ConversationHistory
-- [ ] Implement `OllamaChatClient` (POST to /api/chat)
-- [ ] Implement `ClaudeChatClient` (POST to /v1/messages)
-- [ ] Implement `GeminiChatClient` (POST to generateContent)
-- [ ] Implement `search_context()` and `format_context()` for RAG
-- [ ] Implement `ChatSession` orchestrator
-- [ ] Add `chat` command to CLI with Rich terminal UI
-- [ ] Add chat configuration to `config.py`
+- [x] Create `chat.py` module with data classes and ConversationHistory
+- [x] Implement `OllamaChatClient` (POST to /api/chat)
+- [x] Implement `ClaudeChatClient` (POST to /v1/messages)
+- [x] Implement `GeminiChatClient` (POST to generateContent)
+- [x] Implement `search_context()` and `format_context()` for RAG
+- [x] Implement `ChatSession` orchestrator
+- [x] Add `chat` command to CLI with Rich terminal UI
+- [x] Add chat configuration to `config.py`
 
 **Testing:**
 
-- [ ] Add tests for ConversationHistory
-- [ ] Add tests for context formatting
-- [ ] Add mocked tests for chat clients
+- [x] Add tests for ConversationHistory
+- [x] Add tests for context formatting
+- [x] Add mocked tests for chat clients
 
 **Future Enhancements (not in initial scope):**
 
