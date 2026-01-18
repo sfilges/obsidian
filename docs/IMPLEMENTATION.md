@@ -19,11 +19,10 @@ The package lives in `src/obsidian/` with these core modules:
 
 1. **Package Manager**: Use `uv` for environment management and dependency resolution.
 2. **Linter/Formatter**: Assume `ruff` is used. Adhere to PEP 8 but prefer modern concise syntax.
-3. **DataFrames**: Use `polars` instead of `pandas`. Prefer LazyFrames (`scan_csv`, `scan_parquet`) over eager execution.
-4. **Data Validation**: Use `pydantic` (v2+) for all data modeling and configuration management.
-5. **CLI**: Use `typer` for command-line interfaces. Use `rich` for terminal output.
-6. **Build Backend**: Use `hatchling` in `pyproject.toml`.
-7. **HTTP Client**: Use `httpx` for HTTP requests (async-capable, modern API).
+3. **Data Validation**: Use `pydantic` (v2+) for all data modeling and configuration management.
+4. **CLI**: Use `typer` for command-line interfaces. Use `rich` for terminal output.
+5. **Build Backend**: Use `hatchling` in `pyproject.toml`.
+6. **HTTP Client**: Use `httpx` for HTTP requests (async-capable, modern API).
 
 ## Configuration
 
@@ -224,10 +223,32 @@ Guidelines:
 
 **Future Enhancements (not in initial scope):**
 
-- [ ] Streaming responses for better UX
+- [x] Streaming responses for better UX
 - [ ] Session persistence to JSON files
 - [ ] `--resume` flag for continuing sessions
 - [ ] Token/cost tracking
+
+## Phase 3 (Refinement & Filtering)
+
+Focus on usability, debugging, and precise retrieval.
+
+### Planned Features
+
+1. **Advanced Chat Filtering**:
+    - Allow users to scope RAG retrieval by note type or tags.
+    - CLI: `obsidian chat --type paper --tag ai`
+    - Logic: Dynamic SQL WHERE clause in LanceDB search (e.g., `note_type = 'paper' AND tags LIKE '%ai%'`).
+
+2. **Session Persistence**:
+    - Save/Resume chat history to `~/.obsidian_chat_history.json`.
+    - CLI: `obsidian chat --resume` to load previous context.
+
+3. **Diagnostics**:
+    - New `obsidian check` command.
+    - Validates: Vault path, DB connection, LLM connectivity, API keys.
+
+4. **Dry-Run Extraction**:
+    - `obsidian extract <file> --dry-run` to preview metadata without modifying files.
 
 ## Inspirations & Resources
 
@@ -259,7 +280,7 @@ Guidelines:
 ## 4. Error Handling & Logic
 
 - Use `tenacity` for retries on network/IO operations.
-- Use `loguru` for logging (not standard `logging`).
+- Use standard `logging` module (configured via `AGENTS.md`).
 - Prefer `f-strings` over `.format()`.
 
 ## 5. Testing
