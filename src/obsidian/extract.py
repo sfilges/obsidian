@@ -12,6 +12,7 @@ from pathlib import Path
 
 import httpx
 from pydantic import BaseModel, Field
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from obsidian.config import (
     ANTHROPIC_API_KEY,
@@ -77,6 +78,19 @@ class OllamaExtractor(BaseExtractor):
         self.model = model
         self.num_ctx = num_ctx
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(httpx.HTTPError),
+        reraise=True,
+    )
+    def _make_request(self, payload: dict) -> dict:
+        """Make HTTP request to Ollama with retry logic."""
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(f"{self.host}/api/generate", json=payload)
+            response.raise_for_status()
+            return response.json()
+
     def extract(self, content: str) -> ExtractedMetadata:
         # Truncate content to avoid context length issues
         max_len = OLLAMA_MAX_CONTENT_LENGTH
@@ -84,31 +98,25 @@ class OllamaExtractor(BaseExtractor):
         prompt = EXTRACTION_PROMPT.format(content=truncated)
 
         try:
-            with httpx.Client(timeout=60.0) as client:
-                payload = {
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json",
-                }
-                # Add num_ctx option if configured
-                if self.num_ctx is not None:
-                    payload["options"] = {"num_ctx": self.num_ctx}
+            payload = {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "format": "json",
+            }
+            # Add num_ctx option if configured
+            if self.num_ctx is not None:
+                payload["options"] = {"num_ctx": self.num_ctx}
 
-                response = client.post(
-                    f"{self.host}/api/generate",
-                    json=payload,
-                )
-                response.raise_for_status()
-                result = response.json()
-                raw_response = result.get("response", "{}")
+            result = self._make_request(payload)
+            raw_response = result.get("response", "{}")
 
-                # Parse JSON response
-                data = json.loads(raw_response)
-                return ExtractedMetadata(**data)
+            # Parse JSON response
+            data = json.loads(raw_response)
+            return ExtractedMetadata(**data)
 
         except httpx.HTTPError as e:
-            logger.warning("Ollama request failed: %s", e)
+            logger.warning("Ollama request failed after retries: %s", e)
             return ExtractedMetadata()
         except json.JSONDecodeError as e:
             logger.warning("Failed to parse Ollama response as JSON: %s", e)
@@ -126,36 +134,46 @@ class ClaudeExtractor(BaseExtractor):
             raise ValueError("ANTHROPIC_API_KEY is required for Claude extractor")
         self.api_key = api_key
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(httpx.HTTPError),
+        reraise=True,
+    )
+    def _make_request(self, prompt: str) -> dict:
+        """Make HTTP request to Claude API with retry logic."""
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": self.api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-3-haiku-20240307",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+
     def extract(self, content: str) -> ExtractedMetadata:
         # Truncate content to avoid token limits
         truncated = content[:API_MAX_CONTENT_LENGTH] if len(content) > API_MAX_CONTENT_LENGTH else content
         prompt = EXTRACTION_PROMPT.format(content=truncated)
 
         try:
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": self.api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": "claude-3-haiku-20240307",
-                        "max_tokens": 1024,
-                        "messages": [{"role": "user", "content": prompt}],
-                    },
-                )
-                response.raise_for_status()
-                result = response.json()
+            result = self._make_request(prompt)
 
-                # Extract text from Claude response
-                text_content = result.get("content", [{}])[0].get("text", "{}")
-                data = json.loads(text_content)
-                return ExtractedMetadata(**data)
+            # Extract text from Claude response
+            text_content = result.get("content", [{}])[0].get("text", "{}")
+            data = json.loads(text_content)
+            return ExtractedMetadata(**data)
 
         except httpx.HTTPError as e:
-            logger.warning("Claude API request failed: %s", e)
+            logger.warning("Claude API request failed after retries: %s", e)
             return ExtractedMetadata()
         except json.JSONDecodeError as e:
             logger.warning("Failed to parse Claude response as JSON: %s", e)
@@ -173,33 +191,43 @@ class GeminiExtractor(BaseExtractor):
             raise ValueError("GOOGLE_API_KEY is required for Gemini extractor")
         self.api_key = api_key
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(httpx.HTTPError),
+        reraise=True,
+    )
+    def _make_request(self, prompt: str) -> dict:
+        """Make HTTP request to Gemini API with retry logic."""
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}",
+                headers={"content-type": "application/json"},
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"responseMimeType": "application/json"},
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+
     def extract(self, content: str) -> ExtractedMetadata:
         # Truncate content to avoid token limits
         truncated = content[:API_MAX_CONTENT_LENGTH] if len(content) > API_MAX_CONTENT_LENGTH else content
         prompt = EXTRACTION_PROMPT.format(content=truncated)
 
         try:
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}",
-                    headers={"content-type": "application/json"},
-                    json={
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {"responseMimeType": "application/json"},
-                    },
-                )
-                response.raise_for_status()
-                result = response.json()
+            result = self._make_request(prompt)
 
-                # Extract text from Gemini response
-                text_content = (
-                    result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
-                )
-                data = json.loads(text_content)
-                return ExtractedMetadata(**data)
+            # Extract text from Gemini response
+            text_content = (
+                result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
+            )
+            data = json.loads(text_content)
+            return ExtractedMetadata(**data)
 
         except httpx.HTTPError as e:
-            logger.warning("Gemini API request failed: %s", e)
+            logger.warning("Gemini API request failed after retries: %s", e)
             return ExtractedMetadata()
         except json.JSONDecodeError as e:
             logger.warning("Failed to parse Gemini response as JSON: %s", e)

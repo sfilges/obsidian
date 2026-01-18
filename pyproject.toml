@@ -22,6 +22,8 @@ dependencies = [
     "rich==13.7.0",
     "einops",
     "ruff>=0.14.11",
+    "tenacity>=8.2.0",
+    "httpx>=0.27.0",
 ]
 
 [project.scripts]
@@ -56,7 +58,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/obsidian/cli.py" = ["T201", "T203", "B008"]  # Allow print statements and typer defaults in CLI
+"src/obsidian/cli.py" = ["T201", "T203", "B008", "PLR0915"]  # Allow print statements, typer defaults, and long functions in CLI
 "src/obsidian/utils.py" = ["PLR0913"]  # Allow many args for frontmatter generation
 
 [tool.ruff.lint.flake8-annotations]

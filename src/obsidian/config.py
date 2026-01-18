@@ -46,6 +46,17 @@ class ObsidianConfig(BaseModel):
     api_max_content_length: int = Field(default=64000, description="Max content chars for API extraction")
     anthropic_api_key: str | None = Field(default=None)
     google_api_key: str | None = Field(default=None)
+    # Chat settings
+    chat_backend: str = Field(default="ollama", description="LLM backend for chat: ollama, claude, gemini")
+    chat_model: str = Field(default="gemma3:27b", description="Model for chat (more powerful than extractor)")
+    chat_max_turns: int = Field(default=10, description="Max conversation history turns (used when compaction disabled)")
+    chat_context_limit: int = Field(default=5, description="Number of RAG context chunks to retrieve")
+    chat_token_limit: int = Field(default=6000, description="Target token budget for history (compaction mode)")
+    chat_recent_turns: int = Field(default=3, description="Recent turns to keep verbatim when compacting")
+    chat_enable_compaction: bool = Field(default=True, description="Use token-based compaction vs simple truncation")
+    # Ingestion settings
+    ingest_auto_extract: bool = Field(default=False, description="Auto-extract metadata for files with incomplete frontmatter during ingestion")
+    ingest_auto_repair: bool = Field(default=False, description="Auto-repair/complete frontmatter during ingestion")
 
     def to_dict(self) -> dict:
         """Convert config to dictionary suitable for saving."""
@@ -61,6 +72,15 @@ class ObsidianConfig(BaseModel):
             "ollama_num_ctx": self.ollama_num_ctx,
             "ollama_max_content_length": self.ollama_max_content_length,
             "api_max_content_length": self.api_max_content_length,
+            "chat_backend": self.chat_backend,
+            "chat_model": self.chat_model,
+            "chat_max_turns": self.chat_max_turns,
+            "chat_context_limit": self.chat_context_limit,
+            "chat_token_limit": self.chat_token_limit,
+            "chat_recent_turns": self.chat_recent_turns,
+            "chat_enable_compaction": self.chat_enable_compaction,
+            "ingest_auto_extract": self.ingest_auto_extract,
+            "ingest_auto_repair": self.ingest_auto_repair,
         }
 
 
@@ -105,9 +125,39 @@ def load_config() -> ObsidianConfig:
     merge("anthropic_api_key", "ANTHROPIC_API_KEY")
     merge("google_api_key", "GOOGLE_API_KEY")
 
-    # Convert string to int for num_ctx if loaded from env
+    # Chat settings
+    merge("chat_backend", "CHAT_BACKEND")
+    merge("chat_model", "CHAT_MODEL")
+    merge("chat_max_turns", "CHAT_MAX_TURNS")
+    merge("chat_context_limit", "CHAT_CONTEXT_LIMIT")
+    merge("chat_token_limit", "CHAT_TOKEN_LIMIT")
+    merge("chat_recent_turns", "CHAT_RECENT_TURNS")
+    merge("chat_enable_compaction", "CHAT_ENABLE_COMPACTION")
+
+    # Ingestion settings
+    merge("ingest_auto_extract", "INGEST_AUTO_EXTRACT")
+    merge("ingest_auto_repair", "INGEST_AUTO_REPAIR")
+
     if "ollama_num_ctx" in config_dict and config_dict["ollama_num_ctx"] is not None:
         config_dict["ollama_num_ctx"] = int(config_dict["ollama_num_ctx"])
+    # Convert string to int for chat settings if loaded from env
+    if "chat_max_turns" in config_dict:
+        config_dict["chat_max_turns"] = int(config_dict["chat_max_turns"])
+    if "chat_token_limit" in config_dict:
+        config_dict["chat_token_limit"] = int(config_dict["chat_token_limit"])
+    if "chat_recent_turns" in config_dict:
+        config_dict["chat_recent_turns"] = int(config_dict["chat_recent_turns"])
+    if "chat_enable_compaction" in config_dict:
+        val = config_dict["chat_enable_compaction"]
+        config_dict["chat_enable_compaction"] = val if isinstance(val, bool) else str(val).lower() in ("true", "1", "yes")
+    if "chat_context_limit" in config_dict:
+        config_dict["chat_context_limit"] = int(config_dict["chat_context_limit"])
+
+    # Convert boolean settings from env strings
+    for bool_key in ("ingest_auto_extract", "ingest_auto_repair"):
+        if bool_key in config_dict:
+            val = config_dict[bool_key]
+            config_dict[bool_key] = val if isinstance(val, bool) else str(val).lower() in ("true", "1", "yes")
 
     return ObsidianConfig(**config_dict)
 
@@ -129,7 +179,7 @@ def setup_logging() -> None:
     root_logger.addHandler(file_handler)
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(getattr(logging, LOG_LEVEL, logging.DEBUG))
+    console_handler.setLevel(logging.WARNING)  # Only show warnings/errors in terminal
     console_handler.setFormatter(logging.Formatter(log_format, date_format))
     root_logger.addHandler(console_handler)
 
@@ -151,6 +201,15 @@ OLLAMA_MAX_CONTENT_LENGTH = CURRENT_CONFIG.ollama_max_content_length
 API_MAX_CONTENT_LENGTH = CURRENT_CONFIG.api_max_content_length
 ANTHROPIC_API_KEY = CURRENT_CONFIG.anthropic_api_key
 GOOGLE_API_KEY = CURRENT_CONFIG.google_api_key
+CHAT_BACKEND = CURRENT_CONFIG.chat_backend
+CHAT_MODEL = CURRENT_CONFIG.chat_model
+CHAT_MAX_TURNS = CURRENT_CONFIG.chat_max_turns
+CHAT_CONTEXT_LIMIT = CURRENT_CONFIG.chat_context_limit
+CHAT_TOKEN_LIMIT = CURRENT_CONFIG.chat_token_limit
+CHAT_RECENT_TURNS = CURRENT_CONFIG.chat_recent_turns
+CHAT_ENABLE_COMPACTION = CURRENT_CONFIG.chat_enable_compaction
+INGEST_AUTO_EXTRACT = CURRENT_CONFIG.ingest_auto_extract
+INGEST_AUTO_REPAIR = CURRENT_CONFIG.ingest_auto_repair
 
 
 def get_current_config() -> ObsidianConfig:
