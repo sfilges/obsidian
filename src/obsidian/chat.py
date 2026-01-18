@@ -16,8 +16,11 @@ from obsidian.config import (
     ANTHROPIC_API_KEY,
     CHAT_BACKEND,
     CHAT_CONTEXT_LIMIT,
+    CHAT_ENABLE_COMPACTION,
     CHAT_MAX_TURNS,
     CHAT_MODEL,
+    CHAT_RECENT_TURNS,
+    CHAT_TOKEN_LIMIT,
     GOOGLE_API_KEY,
     OLLAMA_HOST,
 )
@@ -58,6 +61,110 @@ class ConversationHistory:
     def clear(self) -> None:
         """Clear conversation history."""
         self._messages = []
+
+    def to_ollama_format(self) -> list[dict]:
+        """Convert to Ollama API format."""
+        return [{"role": m.role, "content": m.content} for m in self._messages]
+
+    def to_claude_format(self) -> list[dict]:
+        """Convert to Claude API format."""
+        return [{"role": m.role, "content": m.content} for m in self._messages]
+
+    def to_gemini_format(self) -> list[dict]:
+        """Convert to Gemini API format (user/model roles)."""
+        return [
+            {"role": "model" if m.role == "assistant" else "user", "parts": [{"text": m.content}]}
+            for m in self._messages
+        ]
+
+
+# --- COMPACTION PROMPT ---
+
+COMPACTION_PROMPT = """Summarize this conversation concisely in prose form, preserving key context \
+like project names, file paths, decisions made, and any facts the user shared. \
+Do not include greetings or filler. Focus on information needed for continuity.
+
+Previous summary:
+{existing_summary}
+
+Conversation to incorporate:
+{messages}"""
+
+
+class CompactingHistory:
+    """Token-aware conversation history with automatic summarization."""
+
+    def __init__(
+        self,
+        token_limit: int = CHAT_TOKEN_LIMIT,
+        recent_turns: int = CHAT_RECENT_TURNS,
+        summarizer: "BaseChatClient | None" = None,
+    ):
+        self.token_limit = token_limit
+        self.recent_turns = recent_turns
+        self._summarizer: "BaseChatClient | None" = summarizer
+        self.summary: str = ""
+        self._messages: list[Message] = []
+
+    def set_summarizer(self, client: "BaseChatClient") -> None:
+        """Set the chat client used for summarization."""
+        self._summarizer = client
+
+    def add(self, role: Literal["user", "assistant"], content: str) -> None:
+        """Add message and trigger compaction if over token limit."""
+        self._messages.append(Message(role=role, content=content))
+        if self._estimate_tokens() > self.token_limit:
+            self._compact()
+
+    def _estimate_tokens(self) -> int:
+        """Rough token estimate: ~4 chars per token."""
+        summary_tokens = len(self.summary) // 4
+        message_tokens = sum(len(m.content) // 4 for m in self._messages)
+        return summary_tokens + message_tokens
+
+    def _compact(self) -> None:
+        """Summarize older turns into prose, keep recent_turns verbatim."""
+        keep_count = self.recent_turns * 2
+        if len(self._messages) <= keep_count:
+            return
+
+        old_msgs = self._messages[:-keep_count]
+        self._messages = self._messages[-keep_count:]
+
+        # Format messages for summarization
+        formatted = "\n".join(f"{m.role.upper()}: {m.content}" for m in old_msgs)
+        prompt = COMPACTION_PROMPT.format(
+            existing_summary=self.summary or "(No previous summary)",
+            messages=formatted,
+        )
+
+        if self._summarizer:
+            try:
+                self.summary = self._summarizer.chat(
+                    [Message(role="user", content=prompt)],
+                    system_prompt="You are a concise summarizer. Output only the summary, no preamble.",
+                )
+                logger.info("Compacted %d messages into summary (%d chars)", len(old_msgs), len(self.summary))
+            except Exception as e:
+                logger.warning("Compaction summarization failed: %s. Keeping raw messages.", e)
+                # Fallback: just concatenate old messages as summary
+                self.summary = f"{self.summary}\n\n{formatted}" if self.summary else formatted
+        else:
+            logger.warning("No summarizer set, using raw concatenation for compaction")
+            self.summary = f"{self.summary}\n\n{formatted}" if self.summary else formatted
+
+    def get_messages(self) -> list[Message]:
+        """Get all messages in history."""
+        return self._messages.copy()
+
+    def get_summary(self) -> str:
+        """Get the compacted summary of older turns."""
+        return self.summary
+
+    def clear(self) -> None:
+        """Clear conversation history and summary."""
+        self._messages = []
+        self.summary = ""
 
     def to_ollama_format(self) -> list[dict]:
         """Convert to Ollama API format."""
@@ -337,6 +444,7 @@ class ChatSession:
     Orchestrates a RAG chat session.
 
     Combines conversation history, context retrieval, and LLM chat.
+    Uses CompactingHistory when enabled, otherwise falls back to ConversationHistory.
     """
 
     def __init__(
@@ -345,12 +453,25 @@ class ChatSession:
         use_rag: bool = True,
         context_limit: int = CHAT_CONTEXT_LIMIT,
         max_turns: int = CHAT_MAX_TURNS,
+        enable_compaction: bool = CHAT_ENABLE_COMPACTION,
+        token_limit: int = CHAT_TOKEN_LIMIT,
+        recent_turns: int = CHAT_RECENT_TURNS,
     ):
         self.client = client or get_chat_client()
         self.use_rag = use_rag
         self.context_limit = context_limit
-        self.history = ConversationHistory(max_turns=max_turns)
+        self.enable_compaction = enable_compaction
         self._last_context: list[dict] = []
+
+        # Choose history implementation based on config
+        if enable_compaction:
+            self.history: CompactingHistory | ConversationHistory = CompactingHistory(
+                token_limit=token_limit,
+                recent_turns=recent_turns,
+                summarizer=self.client,
+            )
+        else:
+            self.history = ConversationHistory(max_turns=max_turns)
 
     def send(self, user_message: str) -> tuple[str, list[dict]]:
         """
@@ -376,6 +497,16 @@ class ChatSession:
 
         # Add user message to history
         self.history.add("user", user_message)
+
+        # Build final system prompt, injecting compaction summary if present
+        if self.enable_compaction and isinstance(self.history, CompactingHistory):
+            summary = self.history.get_summary()
+            if summary:
+                summary_block = f"\n\nConversation Summary (earlier context):\n{summary}"
+                if system_prompt:
+                    system_prompt = system_prompt + summary_block
+                else:
+                    system_prompt = f"Conversation Summary (earlier context):\n{summary}"
 
         # Get response from LLM
         response = self.client.chat(self.history.get_messages(), system_prompt=system_prompt)

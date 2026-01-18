@@ -49,8 +49,11 @@ class ObsidianConfig(BaseModel):
     # Chat settings
     chat_backend: str = Field(default="ollama", description="LLM backend for chat: ollama, claude, gemini")
     chat_model: str = Field(default="gemma3:27b", description="Model for chat (more powerful than extractor)")
-    chat_max_turns: int = Field(default=10, description="Max conversation history turns")
+    chat_max_turns: int = Field(default=10, description="Max conversation history turns (used when compaction disabled)")
     chat_context_limit: int = Field(default=5, description="Number of RAG context chunks to retrieve")
+    chat_token_limit: int = Field(default=6000, description="Target token budget for history (compaction mode)")
+    chat_recent_turns: int = Field(default=3, description="Recent turns to keep verbatim when compacting")
+    chat_enable_compaction: bool = Field(default=True, description="Use token-based compaction vs simple truncation")
 
     def to_dict(self) -> dict:
         """Convert config to dictionary suitable for saving."""
@@ -70,6 +73,9 @@ class ObsidianConfig(BaseModel):
             "chat_model": self.chat_model,
             "chat_max_turns": self.chat_max_turns,
             "chat_context_limit": self.chat_context_limit,
+            "chat_token_limit": self.chat_token_limit,
+            "chat_recent_turns": self.chat_recent_turns,
+            "chat_enable_compaction": self.chat_enable_compaction,
         }
 
 
@@ -119,12 +125,22 @@ def load_config() -> ObsidianConfig:
     merge("chat_model", "CHAT_MODEL")
     merge("chat_max_turns", "CHAT_MAX_TURNS")
     merge("chat_context_limit", "CHAT_CONTEXT_LIMIT")
+    merge("chat_token_limit", "CHAT_TOKEN_LIMIT")
+    merge("chat_recent_turns", "CHAT_RECENT_TURNS")
+    merge("chat_enable_compaction", "CHAT_ENABLE_COMPACTION")
 
     if "ollama_num_ctx" in config_dict and config_dict["ollama_num_ctx"] is not None:
         config_dict["ollama_num_ctx"] = int(config_dict["ollama_num_ctx"])
     # Convert string to int for chat settings if loaded from env
     if "chat_max_turns" in config_dict:
         config_dict["chat_max_turns"] = int(config_dict["chat_max_turns"])
+    if "chat_token_limit" in config_dict:
+        config_dict["chat_token_limit"] = int(config_dict["chat_token_limit"])
+    if "chat_recent_turns" in config_dict:
+        config_dict["chat_recent_turns"] = int(config_dict["chat_recent_turns"])
+    if "chat_enable_compaction" in config_dict:
+        val = config_dict["chat_enable_compaction"]
+        config_dict["chat_enable_compaction"] = val if isinstance(val, bool) else str(val).lower() in ("true", "1", "yes")
     if "chat_context_limit" in config_dict:
         config_dict["chat_context_limit"] = int(config_dict["chat_context_limit"])
 
@@ -174,6 +190,9 @@ CHAT_BACKEND = CURRENT_CONFIG.chat_backend
 CHAT_MODEL = CURRENT_CONFIG.chat_model
 CHAT_MAX_TURNS = CURRENT_CONFIG.chat_max_turns
 CHAT_CONTEXT_LIMIT = CURRENT_CONFIG.chat_context_limit
+CHAT_TOKEN_LIMIT = CURRENT_CONFIG.chat_token_limit
+CHAT_RECENT_TURNS = CURRENT_CONFIG.chat_recent_turns
+CHAT_ENABLE_COMPACTION = CURRENT_CONFIG.chat_enable_compaction
 
 
 def get_current_config() -> ObsidianConfig:

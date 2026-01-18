@@ -7,6 +7,7 @@ import pytest
 from obsidian.chat import (
     ChatSession,
     ClaudeChatClient,
+    CompactingHistory,
     ConversationHistory,
     GeminiChatClient,
     Message,
@@ -92,6 +93,114 @@ class TestConversationHistory:
         result = history.to_gemini_format()
         assert result[0]["role"] == "user"
         assert result[1]["role"] == "model"  # Gemini uses "model" for assistant
+
+
+class TestCompactingHistory:
+    """Tests for CompactingHistory with token-based compaction."""
+
+    def test_add_message(self):
+        """Messages should be added correctly."""
+        history = CompactingHistory(token_limit=10000, recent_turns=3)
+        history.add("user", "Hello")
+        history.add("assistant", "Hi")
+
+        messages = history.get_messages()
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+    def test_token_estimation(self):
+        """Token estimate should be ~4 chars per token."""
+        history = CompactingHistory(token_limit=10000, recent_turns=3)
+        # 400 chars = ~100 tokens
+        history.add("user", "x" * 400)
+
+        # Estimate should be around 100 tokens
+        assert 90 <= history._estimate_tokens() <= 110
+
+    def test_compaction_triggers_at_limit(self):
+        """Compaction should trigger when over token limit."""
+        mock_summarizer = MagicMock()
+        mock_summarizer.chat.return_value = "Summary of earlier conversation."
+
+        # Very low token limit to force compaction
+        history = CompactingHistory(token_limit=50, recent_turns=1, summarizer=mock_summarizer)
+
+        # Add enough messages to exceed limit (each ~25 tokens)
+        history.add("user", "x" * 100)
+        history.add("assistant", "y" * 100)
+        history.add("user", "z" * 100)  # This should trigger compaction
+
+        # Should have called summarizer
+        mock_summarizer.chat.assert_called()
+        # Should have summary now
+        assert history.get_summary() == "Summary of earlier conversation."
+
+    def test_keeps_recent_turns(self):
+        """Compaction should keep recent_turns verbatim."""
+        mock_summarizer = MagicMock()
+        mock_summarizer.chat.return_value = "Old stuff summarized."
+
+        history = CompactingHistory(token_limit=50, recent_turns=1, summarizer=mock_summarizer)
+
+        history.add("user", "First message " + "x" * 100)
+        history.add("assistant", "First reply " + "y" * 100)
+        history.add("user", "Second message " + "z" * 100)  # Triggers compaction
+        history.add("assistant", "Second reply")
+
+        messages = history.get_messages()
+        # Should keep only last 1 turn (2 messages)
+        assert len(messages) == 2
+        assert "Second message" in messages[0].content
+        assert "Second reply" in messages[1].content
+
+    def test_summary_accumulates(self):
+        """Multiple compactions should merge summaries."""
+        call_count = [0]
+
+        def mock_chat(messages, system_prompt=None):
+            call_count[0] += 1
+            return f"Summary batch {call_count[0]}"
+
+        mock_summarizer = MagicMock()
+        mock_summarizer.chat = mock_chat
+
+        history = CompactingHistory(token_limit=50, recent_turns=1, summarizer=mock_summarizer)
+
+        # First batch
+        history.add("user", "a" * 100)
+        history.add("assistant", "b" * 100)
+        history.add("user", "c" * 100)  # Compact 1
+
+        # Second batch
+        history.add("assistant", "d" * 100)
+        history.add("user", "e" * 100)  # Compact 2
+
+        assert call_count[0] >= 2
+        assert "Summary batch" in history.get_summary()
+
+    def test_fallback_without_summarizer(self):
+        """Without summarizer, should use raw concatenation."""
+        history = CompactingHistory(token_limit=50, recent_turns=1, summarizer=None)
+
+        history.add("user", "Hello " + "x" * 100)
+        history.add("assistant", "World " + "y" * 100)
+        history.add("user", "Test " + "z" * 100)  # Triggers compaction
+
+        summary = history.get_summary()
+        # Raw concatenation should contain original content
+        assert "USER:" in summary or "Hello" in summary
+
+    def test_clear_resets_all(self):
+        """Clear should reset messages and summary."""
+        history = CompactingHistory(token_limit=10000, recent_turns=3)
+        history.add("user", "test")
+        history.summary = "Some old summary"
+
+        history.clear()
+
+        assert len(history.get_messages()) == 0
+        assert history.get_summary() == ""
 
 
 class TestContextFormatting:
