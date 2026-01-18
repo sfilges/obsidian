@@ -196,10 +196,12 @@ def chat(
     Uses LanceDB vector search to retrieve relevant context from your vault
     and generates responses using the configured LLM backend.
     """
+    from rich.live import Live
     from rich.markdown import Markdown
     from rich.panel import Panel
+    from rich.tree import Tree
 
-    from obsidian.chat import ChatSession, format_context_summary, get_chat_client
+    from obsidian.chat import ChatSession, get_chat_client
     from obsidian.core import get_table
 
     current = get_current_config()
@@ -207,9 +209,7 @@ def chat(
     # Check if RAG is available
     use_rag = not no_rag
     if use_rag and get_table() is None:
-        console.print(
-            "[yellow]Warning: LanceDB table not found. Run 'obsidian lance' first to enable RAG.[/yellow]"
-        )
+        console.print("[yellow]Warning: LanceDB table not found. Run 'obsidian lance' first to enable RAG.[/yellow]")
         console.print("[yellow]Continuing in no-RAG mode...[/yellow]\n")
         use_rag = False
 
@@ -223,13 +223,14 @@ def chat(
     session = ChatSession(client=client, use_rag=use_rag, context_limit=context)
 
     # Welcome message
-    console.print(Panel.fit(
-        f"[bold blue]Obsidian Chat[/bold blue]\n"
-        f"Backend: {current.chat_backend} ({current.chat_model})\n"
-        f"RAG: {'enabled' if use_rag else 'disabled'}"
-        + (f" (context: {context} chunks)" if use_rag else ""),
-        title="Welcome",
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold blue]Obsidian Chat[/bold blue]\n"
+            f"Backend: {current.chat_backend} ({current.chat_model})\n"
+            f"RAG: {'enabled' if use_rag else 'disabled'}" + (f" (context: {context} chunks)" if use_rag else ""),
+            title="Welcome",
+        )
+    )
     console.print("Type [bold]help[/bold] for commands, [bold]exit[/bold] to quit.\n")
 
     # Chat loop
@@ -263,20 +264,30 @@ def chat(
 
         # Send message and get response
         try:
-            response, context_chunks = session.send(user_input)
+            console.print("[bold blue]Assistant:[/bold blue]")
+
+            with console.status("[bold green]Thinking...[/bold green]", spinner="dots"):
+                response_gen, context_chunks = session.stream_send(user_input)
 
             # Show retrieved context if available
             if context_chunks:
-                context_summary = format_context_summary(context_chunks)
-                console.print(f"\n[dim]{context_summary}[/dim]\n")
+                tree = Tree(f"[dim]Retrieved Context ({len(context_chunks)} chunks)[/dim]")
+                for chunk in context_chunks:
+                    title = chunk.get("title") or chunk.get("filename", "Unknown")
+                    path = chunk.get("relative_path", "")
+                    tree.add(f"[cyan]{title}[/cyan] [dim]({path})[/dim]")
+                console.print(tree)
+                console.print()
 
-            # Display response with markdown rendering
-            console.print("[bold blue]Assistant:[/bold blue]")
-            console.print(Markdown(response))
+            # Stream response
+            response_text = ""
+            with Live(Markdown(""), refresh_per_second=10, transient=False) as live:
+                for token in response_gen:
+                    response_text += token
+                    live.update(Markdown(response_text))
             console.print()
 
         except RuntimeError as e:
             console.print(f"[bold red]Error: {e}[/bold red]\n")
         except Exception as e:
             console.print(f"[bold red]Unexpected error: {e}[/bold red]\n")
-

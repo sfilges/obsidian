@@ -5,8 +5,10 @@ Provides a terminal-based RAG chatbot using LanceDB vector search
 and local/cloud LLMs (Ollama, Claude, Gemini).
 """
 
+import json
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Generator
 from typing import Literal
 
 import httpx
@@ -102,7 +104,7 @@ class CompactingHistory:
     ):
         self.token_limit = token_limit
         self.recent_turns = recent_turns
-        self._summarizer: "BaseChatClient | None" = summarizer
+        self._summarizer: BaseChatClient | None = summarizer
         self.summary: str = ""
         self._messages: list[Message] = []
 
@@ -207,6 +209,13 @@ class BaseChatClient(ABC):
     def chat(self, messages: list[Message], system_prompt: str | None = None) -> str:
         """Send messages and return assistant response."""
 
+    def stream_chat(self, messages: list[Message], system_prompt: str | None = None) -> Generator[str, None, None]:
+        """
+        Stream assistant response token by token.
+        Default implementation calls chat() and yields full response.
+        """
+        yield self.chat(messages, system_prompt)
+
 
 class OllamaChatClient(BaseChatClient):
     """Chat client using local Ollama LLM."""
@@ -238,6 +247,39 @@ class OllamaChatClient(BaseChatClient):
         except httpx.HTTPError as e:
             logger.error("Ollama chat request failed: %s", e)
             raise RuntimeError(f"Ollama chat failed: {e}") from e
+
+    def stream_chat(self, messages: list[Message], system_prompt: str | None = None) -> Generator[str, None, None]:
+        """Stream chat request to Ollama."""
+        ollama_messages = [{"role": m.role, "content": m.content} for m in messages]
+
+        if system_prompt:
+            ollama_messages.insert(0, {"role": "system", "content": system_prompt})
+
+        payload = {
+            "model": self.model,
+            "messages": ollama_messages,
+            "stream": True,
+        }
+
+        try:
+            with (
+                httpx.Client(timeout=120.0) as client,
+                client.stream("POST", f"{self.host}/api/chat", json=payload) as response,
+            ):
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        content = data.get("message", {}).get("content", "")
+                        if content:
+                            yield content
+                    except json.JSONDecodeError:
+                        continue
+        except httpx.HTTPError as e:
+            logger.error("Ollama stream chat request failed: %s", e)
+            raise RuntimeError(f"Ollama stream chat failed: {e}") from e
 
 
 class ClaudeChatClient(BaseChatClient):
@@ -515,6 +557,55 @@ class ChatSession:
         self.history.add("assistant", response)
 
         return response, context_chunks
+
+    def stream_send(self, user_message: str) -> tuple[Generator[str, None, None], list[dict]]:
+        """
+        Send a user message and stream assistant response.
+
+        Args:
+            user_message: The user's input
+
+        Returns:
+            Tuple of (response generator, retrieved context chunks)
+        """
+        # Retrieve context if RAG enabled
+        context_chunks = []
+        system_prompt = None
+
+        if self.use_rag:
+            context_chunks = search_context(user_message, limit=self.context_limit)
+            if context_chunks:
+                context_str = format_context(context_chunks)
+                system_prompt = RAG_SYSTEM_PROMPT.format(context=context_str)
+
+        self._last_context = context_chunks
+
+        # Add user message to history
+        self.history.add("user", user_message)
+
+        # Build final system prompt, injecting compaction summary if present
+        if self.enable_compaction and isinstance(self.history, CompactingHistory):
+            summary = self.history.get_summary()
+            if summary:
+                summary_block = f"\n\nConversation Summary (earlier context):\n{summary}"
+                if system_prompt:
+                    system_prompt = system_prompt + summary_block
+                else:
+                    system_prompt = f"Conversation Summary (earlier context):\n{summary}"
+
+        # Create a generator that captures the full response for history
+        def response_wrapper():
+            full_response = []
+            try:
+                for token in self.client.stream_chat(self.history.get_messages(), system_prompt=system_prompt):
+                    full_response.append(token)
+                    yield token
+            finally:
+                # Add complete response to history once done
+                if full_response:
+                    self.history.add("assistant", "".join(full_response))
+
+        return response_wrapper(), context_chunks
 
     def get_last_context(self) -> list[dict]:
         """Get the context chunks from the last query."""
