@@ -13,6 +13,7 @@ from typing import Literal
 
 import httpx
 from pydantic import BaseModel, Field
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from obsidian.config import (
     ANTHROPIC_API_KEY,
@@ -224,6 +225,19 @@ class OllamaChatClient(BaseChatClient):
         self.host = host.rstrip("/")
         self.model = model
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(httpx.HTTPError),
+        reraise=True,
+    )
+    def _make_request(self, payload: dict) -> dict:
+        """Make HTTP request to Ollama with retry logic."""
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(f"{self.host}/api/chat", json=payload)
+            response.raise_for_status()
+            return response.json()
+
     def chat(self, messages: list[Message], system_prompt: str | None = None) -> str:
         """Send chat request to Ollama."""
         ollama_messages = [{"role": m.role, "content": m.content} for m in messages]
@@ -239,13 +253,10 @@ class OllamaChatClient(BaseChatClient):
         }
 
         try:
-            with httpx.Client(timeout=120.0) as client:
-                response = client.post(f"{self.host}/api/chat", json=payload)
-                response.raise_for_status()
-                data = response.json()
-                return data.get("message", {}).get("content", "")
+            data = self._make_request(payload)
+            return data.get("message", {}).get("content", "")
         except httpx.HTTPError as e:
-            logger.error("Ollama chat request failed: %s", e)
+            logger.error("Ollama chat request failed after retries: %s", e)
             raise RuntimeError(f"Ollama chat failed: {e}") from e
 
     def stream_chat(self, messages: list[Message], system_prompt: str | None = None) -> Generator[str, None, None]:
@@ -291,6 +302,19 @@ class ClaudeChatClient(BaseChatClient):
         self.api_key = api_key
         self.model = model
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(httpx.HTTPError),
+        reraise=True,
+    )
+    def _make_request(self, payload: dict, headers: dict) -> dict:
+        """Make HTTP request to Claude API with retry logic."""
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post("https://api.anthropic.com/v1/messages", json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+
     def chat(self, messages: list[Message], system_prompt: str | None = None) -> str:
         """Send chat request to Claude."""
         claude_messages = [{"role": m.role, "content": m.content} for m in messages]
@@ -310,15 +334,12 @@ class ClaudeChatClient(BaseChatClient):
         }
 
         try:
-            with httpx.Client(timeout=120.0) as client:
-                response = client.post("https://api.anthropic.com/v1/messages", json=payload, headers=headers)
-                response.raise_for_status()
-                data = response.json()
-                # Claude returns content as array of blocks
-                content_blocks = data.get("content", [])
-                return "".join(block.get("text", "") for block in content_blocks if block.get("type") == "text")
+            data = self._make_request(payload, headers)
+            # Claude returns content as array of blocks
+            content_blocks = data.get("content", [])
+            return "".join(block.get("text", "") for block in content_blocks if block.get("type") == "text")
         except httpx.HTTPError as e:
-            logger.error("Claude chat request failed: %s", e)
+            logger.error("Claude chat request failed after retries: %s", e)
             raise RuntimeError(f"Claude chat failed: {e}") from e
 
 
@@ -330,6 +351,19 @@ class GeminiChatClient(BaseChatClient):
             raise ValueError("GOOGLE_API_KEY is required for Gemini chat")
         self.api_key = api_key
         self.model = model
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(httpx.HTTPError),
+        reraise=True,
+    )
+    def _make_request(self, url: str, payload: dict) -> dict:
+        """Make HTTP request to Gemini API with retry logic."""
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()
 
     def chat(self, messages: list[Message], system_prompt: str | None = None) -> str:
         """Send chat request to Gemini."""
@@ -347,18 +381,15 @@ class GeminiChatClient(BaseChatClient):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
 
         try:
-            with httpx.Client(timeout=120.0) as client:
-                response = client.post(url, json=payload)
-                response.raise_for_status()
-                data = response.json()
-                # Extract text from response
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    return "".join(p.get("text", "") for p in parts)
-                return ""
+            data = self._make_request(url, payload)
+            # Extract text from response
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                return "".join(p.get("text", "") for p in parts)
+            return ""
         except httpx.HTTPError as e:
-            logger.error("Gemini chat request failed: %s", e)
+            logger.error("Gemini chat request failed after retries: %s", e)
             raise RuntimeError(f"Gemini chat failed: {e}") from e
 
 

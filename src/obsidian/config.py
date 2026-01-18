@@ -54,6 +54,9 @@ class ObsidianConfig(BaseModel):
     chat_token_limit: int = Field(default=6000, description="Target token budget for history (compaction mode)")
     chat_recent_turns: int = Field(default=3, description="Recent turns to keep verbatim when compacting")
     chat_enable_compaction: bool = Field(default=True, description="Use token-based compaction vs simple truncation")
+    # Ingestion settings
+    ingest_auto_extract: bool = Field(default=False, description="Auto-extract metadata for files with incomplete frontmatter during ingestion")
+    ingest_auto_repair: bool = Field(default=False, description="Auto-repair/complete frontmatter during ingestion")
 
     def to_dict(self) -> dict:
         """Convert config to dictionary suitable for saving."""
@@ -76,6 +79,8 @@ class ObsidianConfig(BaseModel):
             "chat_token_limit": self.chat_token_limit,
             "chat_recent_turns": self.chat_recent_turns,
             "chat_enable_compaction": self.chat_enable_compaction,
+            "ingest_auto_extract": self.ingest_auto_extract,
+            "ingest_auto_repair": self.ingest_auto_repair,
         }
 
 
@@ -129,6 +134,10 @@ def load_config() -> ObsidianConfig:
     merge("chat_recent_turns", "CHAT_RECENT_TURNS")
     merge("chat_enable_compaction", "CHAT_ENABLE_COMPACTION")
 
+    # Ingestion settings
+    merge("ingest_auto_extract", "INGEST_AUTO_EXTRACT")
+    merge("ingest_auto_repair", "INGEST_AUTO_REPAIR")
+
     if "ollama_num_ctx" in config_dict and config_dict["ollama_num_ctx"] is not None:
         config_dict["ollama_num_ctx"] = int(config_dict["ollama_num_ctx"])
     # Convert string to int for chat settings if loaded from env
@@ -143,6 +152,12 @@ def load_config() -> ObsidianConfig:
         config_dict["chat_enable_compaction"] = val if isinstance(val, bool) else str(val).lower() in ("true", "1", "yes")
     if "chat_context_limit" in config_dict:
         config_dict["chat_context_limit"] = int(config_dict["chat_context_limit"])
+
+    # Convert boolean settings from env strings
+    for bool_key in ("ingest_auto_extract", "ingest_auto_repair"):
+        if bool_key in config_dict:
+            val = config_dict[bool_key]
+            config_dict[bool_key] = val if isinstance(val, bool) else str(val).lower() in ("true", "1", "yes")
 
     return ObsidianConfig(**config_dict)
 
@@ -193,6 +208,8 @@ CHAT_CONTEXT_LIMIT = CURRENT_CONFIG.chat_context_limit
 CHAT_TOKEN_LIMIT = CURRENT_CONFIG.chat_token_limit
 CHAT_RECENT_TURNS = CURRENT_CONFIG.chat_recent_turns
 CHAT_ENABLE_COMPACTION = CURRENT_CONFIG.chat_enable_compaction
+INGEST_AUTO_EXTRACT = CURRENT_CONFIG.ingest_auto_extract
+INGEST_AUTO_REPAIR = CURRENT_CONFIG.ingest_auto_repair
 
 
 def get_current_config() -> ObsidianConfig:

@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 # --- DATABASE SCHEMA ---
+SCHEMA_VERSION = 1  # Increment when schema changes require migration
+
+
 class NoteChunk(LanceModel):
     """Schema for indexed note chunks in LanceDB."""
 
@@ -33,6 +36,7 @@ class NoteChunk(LanceModel):
     status: str
     tags: str
     last_modified: float
+    schema_version: int = SCHEMA_VERSION  # For future migrations
 
 
 # --- SINGLETONS ---

@@ -73,13 +73,25 @@ def config(
 
 
 @app.command()
-def lance():
+def lance(
+    force: bool = typer.Option(False, "--force", "-f", help="Delete existing database and rebuild from scratch"),
+):
     """
     Ingest the Obsidian vault into LanceDB.
     """
     from obsidian import ingest
 
     current = get_current_config()
+
+    if force:
+        console.print("[yellow]Force rebuild requested - deleting existing database...[/yellow]")
+        import shutil
+
+        db_path = current.lancedb_path
+        if db_path.exists():
+            shutil.rmtree(db_path)
+            console.print(f"[yellow]Deleted {db_path}[/yellow]")
+
     console.print(f"[bold green]Starting Ingestion for {current.vault_path}...[/bold green]")
     ingest.main()
 

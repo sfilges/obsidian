@@ -10,11 +10,116 @@ import os
 from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
-from obsidian.config import CHUNK_OVERLAP, CHUNK_SIZE, VAULT_PATH
-from obsidian.core import NoteChunk, get_db, get_model
+from obsidian.config import (
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    EXTRACTOR_BACKEND,
+    INGEST_AUTO_EXTRACT,
+    INGEST_AUTO_REPAIR,
+    VAULT_PATH,
+)
+from obsidian.core import SCHEMA_VERSION, NoteChunk, get_db, get_model
 from obsidian.utils import get_file_metadata, parse_frontmatter
 
 logger = logging.getLogger(__name__)
+
+# Required frontmatter fields for a complete/valid frontmatter
+REQUIRED_FRONTMATTER_FIELDS = {"id", "title", "status", "created", "type"}
+
+
+def is_frontmatter_complete(frontmatter: dict) -> bool:
+    """Check if frontmatter has all required fields with non-empty values."""
+    for field in REQUIRED_FRONTMATTER_FIELDS:
+        if field not in frontmatter or not frontmatter[field]:
+            return False
+    return True
+
+
+def repair_frontmatter(filepath: str, frontmatter: dict, content: str) -> dict:
+    """
+    Repair incomplete frontmatter by filling in missing fields.
+
+    If auto-extract is enabled and backend is configured, uses LLM to extract
+    metadata. Otherwise, uses sensible defaults.
+
+    Args:
+        filepath: Path to the file
+        frontmatter: Existing frontmatter dict
+        content: File content (without frontmatter)
+
+    Returns:
+        Updated frontmatter dict with all required fields
+    """
+    from pathlib import Path
+
+    updated = frontmatter.copy()
+    filename = os.path.basename(filepath)
+
+    # Extract metadata using LLM if enabled
+    extracted_title = ""
+    extracted_summary = ""
+    extracted_tags = []
+    extracted_authors = []
+
+    if INGEST_AUTO_EXTRACT and EXTRACTOR_BACKEND.lower() != "none":
+        try:
+            from obsidian.extract import extract_metadata
+
+            logger.info("Auto-extracting metadata for %s...", filename)
+            metadata = extract_metadata(content)
+            extracted_title = metadata.title
+            extracted_summary = metadata.summary
+            extracted_tags = metadata.tags
+            extracted_authors = metadata.authors
+        except Exception as e:
+            logger.warning("Failed to extract metadata for %s: %s", filename, e)
+
+    # Fill in missing required fields
+    if "id" not in updated or not updated["id"]:
+        import uuid
+
+        updated["id"] = str(uuid.uuid4())
+
+    if "title" not in updated or not updated["title"]:
+        updated["title"] = extracted_title or Path(filepath).stem
+
+    if "status" not in updated or not updated["status"]:
+        updated["status"] = "active"
+
+    if "created" not in updated or not updated["created"]:
+        import time
+
+        updated["created"] = time.strftime("%Y-%m-%d")
+
+    if "type" not in updated or not updated["type"]:
+        updated["type"] = "general"
+
+    # Fill optional fields if extracted
+    if extracted_summary and ("summary" not in updated or not updated["summary"]):
+        updated["summary"] = extracted_summary
+
+    if extracted_tags and ("tags" not in updated or not updated["tags"]):
+        updated["tags"] = extracted_tags
+
+    if extracted_authors and ("authors" not in updated or not updated["authors"]):
+        updated["authors"] = extracted_authors
+
+    return updated
+
+
+def write_repaired_frontmatter(filepath: str, frontmatter: dict, content: str) -> None:
+    """Write the repaired frontmatter back to the file."""
+    import yaml
+
+    frontmatter_str = "---\n"
+    frontmatter_str += yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    frontmatter_str += "---\n\n"
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(frontmatter_str + content)
+
+    logger.info("Repaired frontmatter for %s", os.path.basename(filepath))
+
 
 # --- NOTES ---
 # Nomic requires the v1.5 specific model ID
@@ -76,6 +181,12 @@ def process_file(filepath: str, table):
 
     frontmatter, content = parse_frontmatter(raw_text)
 
+    # Check if frontmatter needs repair
+    if INGEST_AUTO_REPAIR and not is_frontmatter_complete(frontmatter):
+        logger.debug("Incomplete frontmatter in %s, repairing...", os.path.basename(filepath))
+        frontmatter = repair_frontmatter(filepath, frontmatter, content)
+        write_repaired_frontmatter(filepath, frontmatter, content)
+
     # Only index files with 'active' status (default for files without status)
     status = frontmatter.get("status", "active")
     if status != "active":
@@ -118,6 +229,7 @@ def process_file(filepath: str, table):
             status=meta["status"],
             tags=meta["tags"],
             last_modified=meta["last_modified"],
+            schema_version=SCHEMA_VERSION,
         )
         records.append(record)
 

@@ -6,10 +6,8 @@ import pytest
 
 from obsidian.chat import (
     ChatSession,
-    ClaudeChatClient,
     CompactingHistory,
     ConversationHistory,
-    GeminiChatClient,
     Message,
     OllamaChatClient,
     format_context,

@@ -121,8 +121,8 @@ The vector database is generated and updated via the obsidian lance command.
 
 - [x] Add `--extract` flag to `obsidian import` for immediate LLM extraction + active status
 - [x] Add `--activate` flag to `obsidian extract` to set status to active
-- [ ] Integrate LLM extraction into `ingest.process_file()` - auto-extract metadata for files with incomplete frontmatter
-- [ ] Add frontmatter auto-repair in `ingest.process_file()` - fix/complete frontmatter during ingestion
+- [x] Integrate LLM extraction into `ingest.process_file()` - auto-extract metadata for files with incomplete frontmatter (controlled by `ingest_auto_extract` config)
+- [x] Add frontmatter auto-repair in `ingest.process_file()` - fix/complete frontmatter during ingestion (controlled by `ingest_auto_repair` config)
 
 *Configuration & Validation*
 
@@ -132,15 +132,19 @@ The vector database is generated and updated via the obsidian lance command.
 
 *Database*
 
-- [ ] Add schema versioning field to `NoteChunk` for future migrations
-- [ ] Add `obsidian lance --force` to rebuild database from scratch
+- [x] Add schema versioning field to `NoteChunk` for future migrations (`schema_version` field with `SCHEMA_VERSION` constant)
+- [x] Add `obsidian lance --force` to rebuild database from scratch
+
+*Robustness*
+
+- [x] Add retry logic with tenacity for all HTTP calls in `extract.py` and `chat.py`
 
 *Testing*
 
-- [ ] Add integration tests for `ingest.process_file()` with mock database
-- [ ] Add tests for `ingest.main()` end-to-end pipeline
-- [ ] Add tests for MCP server tools (`search_notes`, `read_full_note`)
-- [ ] Add tests for `import_doc` pipeline
+- [x] Add integration tests for `ingest.process_file()` with mock database
+- [x] Add tests for `ingest.main()` end-to-end pipeline
+- [x] Add tests for MCP server tools (`search_notes`, `read_full_note`)
+- [x] Add tests for `import_doc` pipeline
 - [ ] Add mocked tests for Claude/Gemini/Ollama extractors
 
 ## Phase 2 (Custom Chatbot + RAG)
