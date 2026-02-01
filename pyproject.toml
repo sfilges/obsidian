@@ -84,4 +84,10 @@ test = [
 ]
 dev = [
     "ruff>=0.14.11",
+    "pre-commit>=4.0.0",
+    "bandit[toml]>=1.8.0",
 ]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build"]
+skips = ["B101"]  # Skip assert_used check (common in tests)
