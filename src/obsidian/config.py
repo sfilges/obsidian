@@ -49,13 +49,17 @@ class ObsidianConfig(BaseModel):
     # Chat settings
     chat_backend: str = Field(default="ollama", description="LLM backend for chat: ollama, claude, gemini")
     chat_model: str = Field(default="gemma3:27b", description="Model for chat (more powerful than extractor)")
-    chat_max_turns: int = Field(default=10, description="Max conversation history turns (used when compaction disabled)")
+    chat_max_turns: int = Field(
+        default=10, description="Max conversation history turns (used when compaction disabled)"
+    )
     chat_context_limit: int = Field(default=5, description="Number of RAG context chunks to retrieve")
     chat_token_limit: int = Field(default=6000, description="Target token budget for history (compaction mode)")
     chat_recent_turns: int = Field(default=3, description="Recent turns to keep verbatim when compacting")
     chat_enable_compaction: bool = Field(default=True, description="Use token-based compaction vs simple truncation")
     # Ingestion settings
-    ingest_auto_extract: bool = Field(default=False, description="Auto-extract metadata for files with incomplete frontmatter during ingestion")
+    ingest_auto_extract: bool = Field(
+        default=False, description="Auto-extract metadata for files with incomplete frontmatter during ingestion"
+    )
     ingest_auto_repair: bool = Field(default=False, description="Auto-repair/complete frontmatter during ingestion")
 
     def to_dict(self) -> dict:
@@ -149,7 +153,9 @@ def load_config() -> ObsidianConfig:
         config_dict["chat_recent_turns"] = int(config_dict["chat_recent_turns"])
     if "chat_enable_compaction" in config_dict:
         val = config_dict["chat_enable_compaction"]
-        config_dict["chat_enable_compaction"] = val if isinstance(val, bool) else str(val).lower() in ("true", "1", "yes")
+        config_dict["chat_enable_compaction"] = (
+            val if isinstance(val, bool) else str(val).lower() in ("true", "1", "yes")
+        )
     if "chat_context_limit" in config_dict:
         config_dict["chat_context_limit"] = int(config_dict["chat_context_limit"])
 

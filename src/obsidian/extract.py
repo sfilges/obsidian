@@ -220,9 +220,7 @@ class GeminiExtractor(BaseExtractor):
             result = self._make_request(prompt)
 
             # Extract text from Gemini response
-            text_content = (
-                result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
-            )
+            text_content = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
             data = json.loads(text_content)
             return ExtractedMetadata(**data)
 
@@ -286,11 +284,7 @@ def extract_metadata(content: str) -> ExtractedMetadata:
     metadata = extractor.extract(content)
     # Normalize tags: lower case and kebab-case
     if metadata.tags:
-        metadata.tags = [
-            t.strip().lower().replace(" ", "-").replace("_", "-")
-            for t in metadata.tags
-            if t.strip()
-        ]
+        metadata.tags = [t.strip().lower().replace(" ", "-").replace("_", "-") for t in metadata.tags if t.strip()]
     return metadata
 
 

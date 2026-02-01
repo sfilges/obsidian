@@ -63,6 +63,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "src/obsidian/cli.py" = ["T201", "T203", "B008", "PLR0915", "PLR0912"]  # Allow print statements, typer defaults, long functions, and many branches in CLI
 "src/obsidian/utils.py" = ["PLR0913"]  # Allow many args for frontmatter generation
+"src/obsidian/chat.py" = ["PLR0913"]  # Allow many args in ChatSession init
+"src/obsidian/config.py" = ["PLR0915"]  # Allow many statements in config loading
+"tests/**/*.py" = ["PLR2004", "SIM117"]  # Allow magic values and nested context managers in tests
 
 [tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = true

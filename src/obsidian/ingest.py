@@ -29,10 +29,7 @@ REQUIRED_FRONTMATTER_FIELDS = {"id", "title", "status", "created", "type"}
 
 def is_frontmatter_complete(frontmatter: dict) -> bool:
     """Check if frontmatter has all required fields with non-empty values."""
-    for field in REQUIRED_FRONTMATTER_FIELDS:
-        if field not in frontmatter or not frontmatter[field]:
-            return False
-    return True
+    return all(field in frontmatter and frontmatter[field] for field in REQUIRED_FRONTMATTER_FIELDS)
 
 
 def repair_frontmatter(filepath: str, frontmatter: dict, content: str) -> dict:

@@ -137,7 +137,7 @@ class TestReadFullNote:
             from obsidian.server import read_full_note
 
             # Try directory traversal attack
-            result = read_full_note("../../../etc/passwd")
+            read_full_note("../../../etc/passwd")
 
             # The query should use the sanitized filename (just "passwd")
             mock_search.where.assert_called()
@@ -173,9 +173,7 @@ class TestReadFullNote:
             mock_search = MagicMock()
             mock_where = MagicMock()
             mock_search.where.return_value = mock_where
-            mock_where.limit.return_value.to_list.return_value = [
-                {"relative_path": "test.md"}
-            ]
+            mock_where.limit.return_value.to_list.return_value = [{"relative_path": "test.md"}]
             mock_table.search.return_value = mock_search
 
             with patch("obsidian.server.get_table", return_value=mock_table):
@@ -192,9 +190,7 @@ class TestReadFullNote:
         mock_search = MagicMock()
         mock_where = MagicMock()
         mock_search.where.return_value = mock_where
-        mock_where.limit.return_value.to_list.return_value = [
-            {"relative_path": "nonexistent/path.md"}
-        ]
+        mock_where.limit.return_value.to_list.return_value = [{"relative_path": "nonexistent/path.md"}]
         mock_table.search.return_value = mock_search
 
         with patch("obsidian.server.get_table", return_value=mock_table):

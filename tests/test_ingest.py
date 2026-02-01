@@ -1,6 +1,5 @@
 """Tests for the ingest module."""
 
-
 from obsidian.ingest import chunk_markdown
 
 
