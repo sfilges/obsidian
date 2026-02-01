@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
-[![CI](https://github.com/sfilges/obsidian-vault-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/sfilges/obsidian-vault-rag/actions/workflows/ci.yml)
+[![CI](https://github.com/sfilges/obsidian/actions/workflows/ci.yml/badge.svg)](https://github.com/sfilges/obsidian/actions/workflows/ci.yml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![PyPI version](https://img.shields.io/pypi/v/obsidian-vault-rag.svg)](https://pypi.org/project/obsidian-vault-rag/)
 [![Downloads](https://img.shields.io/pypi/dm/obsidian-vault-rag.svg)](https://pypi.org/project/obsidian-vault-rag/)
@@ -21,11 +21,11 @@
 Clone the repository and install the package:
 
 ```bash
-# Using pip
-pip install -e .
+# Using uv (recommended for speed)
+uv pip install obsidian-vault-rag
 
-# OR using uv (recommended for speed)
-uv pip install .
+# Or using pip
+pip install obsidian-vault-rag
 ```
 
 ## Quick Start
@@ -96,7 +96,3 @@ Add the following entry (replace `/path/to/your/python` with your actual Python 
 ```
 
 > **Tip:** You can find your python path by running `which python` (Mac/Linux) or `where python` (Windows) inside your project environment.
-
-## License
-
-MIT
