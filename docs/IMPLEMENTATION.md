@@ -19,11 +19,10 @@ The package lives in `src/obsidian/` with these core modules:
 
 1. **Package Manager**: Use `uv` for environment management and dependency resolution.
 2. **Linter/Formatter**: Assume `ruff` is used. Adhere to PEP 8 but prefer modern concise syntax.
-3. **DataFrames**: Use `polars` instead of `pandas`. Prefer LazyFrames (`scan_csv`, `scan_parquet`) over eager execution.
-4. **Data Validation**: Use `pydantic` (v2+) for all data modeling and configuration management.
-5. **CLI**: Use `typer` for command-line interfaces. Use `rich` for terminal output.
-6. **Build Backend**: Use `hatchling` in `pyproject.toml`.
-7. **HTTP Client**: Use `httpx` for HTTP requests (async-capable, modern API).
+3. **Data Validation**: Use `pydantic` (v2+) for all data modeling and configuration management.
+4. **CLI**: Use `typer` for command-line interfaces. Use `rich` for terminal output.
+5. **Build Backend**: Use `hatchling` in `pyproject.toml`.
+6. **HTTP Client**: Use `httpx` for HTTP requests (async-capable, modern API).
 
 ## Configuration
 
@@ -121,8 +120,8 @@ The vector database is generated and updated via the obsidian lance command.
 
 - [x] Add `--extract` flag to `obsidian import` for immediate LLM extraction + active status
 - [x] Add `--activate` flag to `obsidian extract` to set status to active
-- [ ] Integrate LLM extraction into `ingest.process_file()` - auto-extract metadata for files with incomplete frontmatter
-- [ ] Add frontmatter auto-repair in `ingest.process_file()` - fix/complete frontmatter during ingestion
+- [x] Integrate LLM extraction into `ingest.process_file()` - auto-extract metadata for files with incomplete frontmatter (controlled by `ingest_auto_extract` config)
+- [x] Add frontmatter auto-repair in `ingest.process_file()` - fix/complete frontmatter during ingestion (controlled by `ingest_auto_repair` config)
 
 *Configuration & Validation*
 
@@ -132,15 +131,19 @@ The vector database is generated and updated via the obsidian lance command.
 
 *Database*
 
-- [ ] Add schema versioning field to `NoteChunk` for future migrations
-- [ ] Add `obsidian lance --force` to rebuild database from scratch
+- [x] Add schema versioning field to `NoteChunk` for future migrations (`schema_version` field with `SCHEMA_VERSION` constant)
+- [x] Add `obsidian lance --force` to rebuild database from scratch
+
+*Robustness*
+
+- [x] Add retry logic with tenacity for all HTTP calls in `extract.py` and `chat.py`
 
 *Testing*
 
-- [ ] Add integration tests for `ingest.process_file()` with mock database
-- [ ] Add tests for `ingest.main()` end-to-end pipeline
-- [ ] Add tests for MCP server tools (`search_notes`, `read_full_note`)
-- [ ] Add tests for `import_doc` pipeline
+- [x] Add integration tests for `ingest.process_file()` with mock database
+- [x] Add tests for `ingest.main()` end-to-end pipeline
+- [x] Add tests for MCP server tools (`search_notes`, `read_full_note`)
+- [x] Add tests for `import_doc` pipeline
 - [ ] Add mocked tests for Claude/Gemini/Ollama extractors
 
 ## Phase 2 (Custom Chatbot + RAG)
@@ -203,27 +206,49 @@ Guidelines:
 
 **Core Implementation:**
 
-- [ ] Create `chat.py` module with data classes and ConversationHistory
-- [ ] Implement `OllamaChatClient` (POST to /api/chat)
-- [ ] Implement `ClaudeChatClient` (POST to /v1/messages)
-- [ ] Implement `GeminiChatClient` (POST to generateContent)
-- [ ] Implement `search_context()` and `format_context()` for RAG
-- [ ] Implement `ChatSession` orchestrator
-- [ ] Add `chat` command to CLI with Rich terminal UI
-- [ ] Add chat configuration to `config.py`
+- [x] Create `chat.py` module with data classes and ConversationHistory
+- [x] Implement `OllamaChatClient` (POST to /api/chat)
+- [x] Implement `ClaudeChatClient` (POST to /v1/messages)
+- [x] Implement `GeminiChatClient` (POST to generateContent)
+- [x] Implement `search_context()` and `format_context()` for RAG
+- [x] Implement `ChatSession` orchestrator
+- [x] Add `chat` command to CLI with Rich terminal UI
+- [x] Add chat configuration to `config.py`
 
 **Testing:**
 
-- [ ] Add tests for ConversationHistory
-- [ ] Add tests for context formatting
-- [ ] Add mocked tests for chat clients
+- [x] Add tests for ConversationHistory
+- [x] Add tests for context formatting
+- [x] Add mocked tests for chat clients
 
 **Future Enhancements (not in initial scope):**
 
-- [ ] Streaming responses for better UX
+- [x] Streaming responses for better UX
 - [ ] Session persistence to JSON files
 - [ ] `--resume` flag for continuing sessions
 - [ ] Token/cost tracking
+
+## Phase 3 (Refinement & Filtering)
+
+Focus on usability, debugging, and precise retrieval.
+
+### Planned Features
+
+1. **Advanced Chat Filtering**:
+    - Allow users to scope RAG retrieval by note type or tags.
+    - CLI: `obsidian chat --type paper --tag ai`
+    - Logic: Dynamic SQL WHERE clause in LanceDB search (e.g., `note_type = 'paper' AND tags LIKE '%ai%'`).
+
+2. **Session Persistence**:
+    - Save/Resume chat history to `~/.obsidian_chat_history.json`.
+    - CLI: `obsidian chat --resume` to load previous context.
+
+3. **Diagnostics**:
+    - New `obsidian check` command.
+    - Validates: Vault path, DB connection, LLM connectivity, API keys.
+
+4. **Dry-Run Extraction**:
+    - `obsidian extract <file> --dry-run` to preview metadata without modifying files.
 
 ## Inspirations & Resources
 
@@ -255,7 +280,7 @@ Guidelines:
 ## 4. Error Handling & Logic
 
 - Use `tenacity` for retries on network/IO operations.
-- Use `loguru` for logging (not standard `logging`).
+- Use standard `logging` module (configured via `AGENTS.md`).
 - Prefer `f-strings` over `.format()`.
 
 ## 5. Testing

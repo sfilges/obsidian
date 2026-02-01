@@ -1,6 +1,5 @@
 """Tests for the extract module."""
 
-
 from obsidian.extract import (
     ExtractedMetadata,
     NoOpExtractor,
@@ -59,7 +58,9 @@ class TestNoOpExtractor:
         assert isinstance(result, ExtractedMetadata)
 
         # Unicode content
-        result = extractor.extract("Unicode: \u00e9\u00e8\u00ea \u4e2d\u6587 \u0440\u0443\u0441\u0441\u043a\u0438\u0439")
+        result = extractor.extract(
+            "Unicode: \u00e9\u00e8\u00ea \u4e2d\u6587 \u0440\u0443\u0441\u0441\u043a\u0438\u0439"
+        )
         assert isinstance(result, ExtractedMetadata)
 
 

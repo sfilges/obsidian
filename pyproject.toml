@@ -4,8 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obsidian-vault-rag"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Obsidian RAG CLI - Ingest and Chat with your notes"
+authors = [{name = "Stefan Filges", email = "stefan.filges@pm.me"}]
+license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -22,10 +24,31 @@ dependencies = [
     "rich==13.7.0",
     "einops",
     "ruff>=0.14.11",
+    "tenacity>=8.2.0",
+    "httpx>=0.27.0",
 ]
+keywords = ["obsidian", "rag", "vector-database", "mcp", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/sfilges/obsidian"
+Repository = "https://github.com/sfilges/obsidian"
+Issues = "https://github.com/sfilges/obsidian/issues"
+Changelog = "https://github.com/sfilges/obsidian/blob/master/CHANGELOG.md"
+Documentation = "https://github.com/sfilges/obsidian/blob/master/docs"
 
 [project.scripts]
 obsidian = "obsidian.cli:app"
+
+[tool.hatch.version]
+path = "src/obsidian/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/obsidian"]
@@ -56,8 +79,11 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/obsidian/cli.py" = ["T201", "T203", "B008"]  # Allow print statements and typer defaults in CLI
+"src/obsidian/cli.py" = ["T201", "T203", "B008", "PLR0915", "PLR0912"]  # Allow print statements, typer defaults, long functions, and many branches in CLI
 "src/obsidian/utils.py" = ["PLR0913"]  # Allow many args for frontmatter generation
+"src/obsidian/chat.py" = ["PLR0913"]  # Allow many args in ChatSession init
+"src/obsidian/config.py" = ["PLR0915"]  # Allow many statements in config loading
+"tests/**/*.py" = ["PLR2004", "SIM117"]  # Allow magic values and nested context managers in tests
 
 [tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = true
@@ -82,4 +108,10 @@ test = [
 ]
 dev = [
     "ruff>=0.14.11",
+    "pre-commit>=4.0.0",
+    "bandit[toml]>=1.8.0",
 ]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build"]
+skips = ["B101"]  # Skip assert_used check (common in tests)

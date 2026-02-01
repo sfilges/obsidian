@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 # --- DATABASE SCHEMA ---
+SCHEMA_VERSION = 1  # Increment when schema changes require migration
+
+
 class NoteChunk(LanceModel):
     """Schema for indexed note chunks in LanceDB."""
 
@@ -33,6 +36,7 @@ class NoteChunk(LanceModel):
     status: str
     tags: str
     last_modified: float
+    schema_version: int = SCHEMA_VERSION  # For future migrations
 
 
 # --- SINGLETONS ---
@@ -51,6 +55,11 @@ def get_model() -> SentenceTransformer:
     """
     global _model
     if _model is None:
+        # Suppress noisy warnings from huggingface libraries
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+        logging.getLogger("transformers_modules").setLevel(logging.ERROR)
+
         logger.info("Loading %s...", EMBEDDING_MODEL_NAME)
         _model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
     return _model

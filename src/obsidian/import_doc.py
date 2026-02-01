@@ -20,8 +20,13 @@ logger = logging.getLogger(__name__)
 
 # Suppress verbose DEBUG output from Docling and HTTP client libraries
 for _noisy_logger in (
-    "docling", "docling_core", "docling_parse", "docling_ibm_models",
-    "httpcore", "httpx", "urllib3",
+    "docling",
+    "docling_core",
+    "docling_parse",
+    "docling_ibm_models",
+    "httpcore",
+    "httpx",
+    "urllib3",
 ):
     logging.getLogger(_noisy_logger).setLevel(logging.INFO)
 
@@ -39,11 +44,7 @@ def get_converter() -> DocumentConverter:
     pipeline_options.table_structure_options = TableStructureOptions(do_cell_matching=True)
 
     # Configure PDF options explicitly, other formats use defaults
-    return DocumentConverter(
-        format_options={
-            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-        }
-    )
+    return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)})
 
 
 def import_file(source: str | Path, vault_path: Path, extract: bool = False):
@@ -139,8 +140,8 @@ def bulk_import(input_dir: Path, vault_path: Path, extract: bool = False):
     """
     input_path = Path(input_dir)
     if not input_path.exists():
-         logger.error("Input directory %s does not exist", input_dir)
-         return
+        logger.error("Input directory %s does not exist", input_dir)
+        return
 
     # Gather all matching files
     files_to_process = []
