@@ -1,8 +1,12 @@
 # Obsidian Vault RAG
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
+[![CI](https://github.com/sfilges/obsidian-vault-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/sfilges/obsidian-vault-rag/actions/workflows/ci.yml)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![PyPI version](https://img.shields.io/pypi/v/obsidian-vault-rag.svg)](https://pypi.org/project/obsidian-vault-rag/)
+[![Downloads](https://img.shields.io/pypi/dm/obsidian-vault-rag.svg)](https://pypi.org/project/obsidian-vault-rag/)
 
 **Obsidian Vault RAG** allows you to import your Obsidian markdown vault into a local LanceDB vector database and expose it via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) for AI agents like Claude.
 
@@ -52,7 +56,7 @@ title: {{title}}
 authors: []
 type: note
 status: active
-created: {{date:YYYY-MM-DD}} 
+created: {{date:YYYY-MM-DD}}
 tags: []
 source: "personal"
 ---

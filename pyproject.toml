@@ -6,6 +6,8 @@ build-backend = "hatchling.build"
 name = "obsidian-vault-rag"
 dynamic = ["version"]
 description = "Obsidian RAG CLI - Ingest and Chat with your notes"
+authors = [{name = "Stefan Filges", email = "stefan.filges@pm.me"}]
+license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -25,6 +27,22 @@ dependencies = [
     "tenacity>=8.2.0",
     "httpx>=0.27.0",
 ]
+keywords = ["obsidian", "rag", "vector-database", "mcp", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/sfilges/obsidian"
+Repository = "https://github.com/sfilges/obsidian"
+Issues = "https://github.com/sfilges/obsidian/issues"
+Changelog = "https://github.com/sfilges/obsidian/blob/master/CHANGELOG.md"
+Documentation = "https://github.com/sfilges/obsidian/blob/master/docs"
 
 [project.scripts]
 obsidian = "obsidian.cli:app"
