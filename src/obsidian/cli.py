@@ -11,10 +11,39 @@ import typer
 from rich.console import Console
 from rich.prompt import Prompt
 
+from obsidian import __version__
 from obsidian.config import get_current_config, save_config
 
-app = typer.Typer(help="Obsidian RAG CLI - Ingest and Chat with your notes.")
+app = typer.Typer(
+    help="Obsidian RAG CLI - Ingest and Chat with your notes.",
+    no_args_is_help=True,
+    add_completion=False,
+)
 console = Console()
+
+
+def version_callback(value: bool):
+    """Print version and exit."""
+    if value:
+        console.print(f"Obsidian RAG CLI version {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show version and exit.",
+        callback=version_callback,
+        is_eager=True,
+    ),
+):
+    """
+    Obsidian RAG CLI - Index and search your Obsidian vault using AI.
+    """
+    pass
 
 
 @app.command()
@@ -211,7 +240,6 @@ def chat(
     from rich.live import Live
     from rich.markdown import Markdown
     from rich.panel import Panel
-    from rich.rule import Rule
     from rich.tree import Tree
 
     from obsidian.chat import ChatSession, get_chat_client
